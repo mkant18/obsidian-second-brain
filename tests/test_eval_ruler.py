@@ -9,6 +9,7 @@ straightened ruler without needing Ollama.
 
 from __future__ import annotations
 
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -135,7 +136,20 @@ def test_generate_refuses_to_overwrite_baseline(tmp_path):
     cases = tmp_path / "cases.jsonl"
     cases.write_text('{"q": "old question", "gold": ["topic.md"]}\n', encoding="utf-8")
 
-    env = {"OBSIDIAN_VAULT_PATH": str(vault), "PATH": "/usr/bin:/bin"}
+    # Copy the real environment (not a hand-picked subset) so platform-required
+    # vars survive: Path.home() at vault_ops.py import time needs
+    # USERPROFILE/HOMEDRIVE/HOMEPATH on Windows or the child crashes before
+    # main() ever runs. OBSIDIAN_ENV_FILE is redirected to a scratch path so the
+    # test stays isolated from the real ~/.config/obsidian-second-brain/.env.
+    env = os.environ.copy()
+    env["OBSIDIAN_VAULT_PATH"] = str(vault)
+    env["OBSIDIAN_ENV_FILE"] = str(tmp_path / "unused.env")
+    # Keep the generate step deterministic and offline regardless of what the
+    # developer/CI shell happens to export: a real XAI_API_KEY would route
+    # question generation through a live Grok call, and a stray
+    # RETRIEVAL_EVAL_EXTERNAL_CMD would swap in a fake ranking engine.
+    env.pop("XAI_API_KEY", None)
+    env.pop("RETRIEVAL_EVAL_EXTERNAL_CMD", None)
     cmd = [sys.executable, "scripts/eval/retrieval_eval.py",
            "--generate", "1", "--cases", str(cases)]
     result = subprocess.run(cmd, cwd=REPO_ROOT, capture_output=True, text=True,
