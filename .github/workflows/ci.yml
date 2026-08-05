@@ -40,32 +40,42 @@ jobs:
       - name: Lint Python
         if: matrix.os == 'ubuntu-latest'
         run: ruff check .
-      # continue-on-error on Windows: as of this change, ~28 tests still fail
-      # here for pre-existing reasons unrelated to P1-6/P1-7, mainly:
-      #   1. subprocess.run(["bash", str(some_windows_path)]) - MSYS bash
-      #      mangles a backslash-separated absolute path passed as its own
-      #      argv (confirmed locally: `bash -n 'C:\...\foo.sh'` fails with
-      #      "No such file or directory" because the backslashes are consumed
-      #      as escapes before bash ever sees a path). The majority of the
-      #      failures are this one pattern, in tests that shell out to the
-      #      repo's bash scripts/hooks.
-      #   2. A couple of tests set env["HOME"] to redirect Path.home() but
-      #      not USERPROFILE, which is what Path.home() actually reads on
-      #      Windows, so the redirect is a no-op there.
-      #   3. One test (link_graph NFC/NFD composition) depends on a
-      #      filesystem-normalization difference that mirrors macOS, not
-      #      Windows.
-      # These are real, separate bugs in the tests/tooling, pre-existing and
-      # out of scope for P0-2 (which only asks to make Windows breakage
-      # visible, not to fix it). They need their own follow-up backlog item(s)
-      # before this leg can be made blocking.
       - name: Run smoke tests
         if: matrix.os == 'ubuntu-latest'
         run: pytest -q
-      - name: Run smoke tests (non-blocking on Windows)
+      # Windows deselects: these fail today for pre-existing reasons unrelated
+      # to P1-6/P1-7 (mainly MSYS bash mangling a backslash-separated absolute
+      # path passed as its own argv, a couple of HOME- vs USERPROFILE-only
+      # env redirects, and one macOS-only filesystem-normalization case) and
+      # are real, separate bugs in the tests/tooling - fixing them is out of
+      # scope for P0-2, which only asks to make Windows breakage visible.
+      # This list is the tracking mechanism: deleting a line means that test
+      # is expected to pass on Windows, so a regression in it fails the build
+      # like any other. No count is quoted here on purpose, mirroring the
+      # E501 comment in pyproject.toml - the last stated count drifted
+      # unnoticed. Regenerate this list from a real, unscoped Windows run
+      # (not this step's own scoped command, which will not show them):
+      #   uv run pytest -q
+      # and copy the FAILED node IDs from the summary at the bottom. A line
+      # comes out only when that test actually passes on Windows - no other
+      # reason. These failures are not tracked in an in-repo backlog file;
+      # the P0-x/P1-x IDs referenced above live in an external audit list,
+      # so this deselect list is the only record of what is still broken.
+      - name: Run smoke tests
         if: matrix.os == 'windows-latest'
-        continue-on-error: true
-        run: pytest -q
+        run: >-
+          pytest -q
+          --deselect 'tests/test_bg_agent_hook.py::test_full_chain_spawns_agent_with_summary'
+          --deselect 'tests/test_bg_agent_hook.py::test_run_log_records_starting_and_completed'
+          --deselect 'tests/test_bg_agent_hook.py::test_early_exit_is_logged_not_silent'
+          --deselect 'tests/test_bg_agent_hook.py::test_project_hints_injected_only_when_opted_in'
+          --deselect 'tests/test_bg_agent_hook.py::test_launch_uses_strict_mcp_config'
+          --deselect 'tests/test_setup_and_manual_drift.py::test_setup_preserves_the_env_file_mode'
+          --deselect 'tests/test_smoke.py::test_link_graph_resolves_unicode_composition'
+          --deselect 'tests/test_smoke.py::test_research_key_in_config_env_selects_paid_mode[scripts.research.research-run_paid-run_free]'
+          --deselect 'tests/test_smoke.py::test_research_key_in_config_env_selects_paid_mode[scripts.research.research_deep-run_paid_deep-run_free_deep]'
+          --deselect 'tests/test_smoke.py::test_retrieval_eval_external_mode'
+          --deselect 'tests/test_smoke.py::test_validate_hook_flags_secrets'
       # Fail the build if a banned substitution character (em-dash, curly quote,
       # Unicode math, ...) appears in prose in any tracked source file. Characters
       # inside code fences / backtick spans are preserved and never fail.
