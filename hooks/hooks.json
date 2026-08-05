@@ -17,7 +17,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/validate-ai-first.sh\"",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/validate-ai-first.sh\"",
             "timeout": 10
           }
         ]
@@ -29,7 +29,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/obsidian-bg-agent.sh\"",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/obsidian-bg-agent.sh\"",
             "timeout": 10,
             "async": true
           }

@@ -1225,7 +1225,7 @@ A background agent that fires automatically whenever Claude compacts the convers
            "hooks": [
              {
                "type": "command",
-               "command": "/Users/you/.claude/skills/obsidian-second-brain/hooks/obsidian-bg-agent.sh",
+               "command": "bash /Users/you/.claude/skills/obsidian-second-brain/hooks/obsidian-bg-agent.sh",
                "timeout": 10,
                "async": true
              }
@@ -1287,6 +1287,8 @@ A non-blocking validator that fires after every `Write` or `Edit` on a markdown 
 **Behavior:** Non-blocking. If a write fails the AI-first rule, Claude sees the warning text on stderr (with one line per missing requirement) and can re-write the file in the same conversation turn to fix it. The original write is NOT reverted.
 
 **Other platforms (Codex CLI / Gemini CLI / OpenCode):** The hook script ships in `dist/<platform>/hooks/` for all platform builds, but each platform's hook system differs. Wiring it up beyond Claude Code is left to the platform's own configuration. See [`hooks/validate-ai-first.hook.yaml`](hooks/validate-ai-first.hook.yaml) for the platform-neutral spec.
+
+**Windows caveat (`SessionStart` hook):** the `SessionStart` hook in `hooks/hooks.json` (and the one `scripts/setup.sh` registers) invokes `python3 <script>` directly. On many Windows installs, `python3` is not a real interpreter but the Microsoft Store's app-execution-alias stub - it exits without running the script and without printing an error, so the hook silently no-ops. If `_CLAUDE.md` is not appearing in context at session start on Windows, run `python3 --version` outside Claude Code first: if that fails or opens the Store, either install Python from python.org (which registers a real `python3.exe`) or disable the stub under Settings > Apps > Advanced app settings > App execution aliases, then re-run `scripts/setup.sh` (or edit `~/.claude/settings.json` by hand) so the hook actually launches. This is not fixed automatically because there is no single interpreter name (`python3`, `python`, `py -3`) that resolves correctly on every platform this skill supports.
 
 ---
 
