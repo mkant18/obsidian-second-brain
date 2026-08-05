@@ -91,6 +91,47 @@ def test_reads_strip_a_utf8_bom(vault):
     assert content.startswith("---"), "frontmatter detection breaks when the BOM survives"
 
 
+def test_update_note_refuses_non_utf8_bytes_instead_of_corrupting_them(vault):
+    """A read-edit-write path must not turn a non-UTF-8 byte into a permanent U+FFFD.
+
+    _read_safe decodes with errors="replace" for read-only tools, which is fine
+    since nothing is written back. update_note writes back, so it must instead
+    refuse a file it cannot decode losslessly.
+    """
+    v, ops = vault
+    target = v / "legacy.md"
+    # 0x92 is a Windows-1252 curly apostrophe; invalid as a UTF-8 continuation byte.
+    before = b"---\ntype: note\n---\n\nit\x92s legacy encoded\n"
+    target.write_bytes(before)
+
+    result = ops.update_note("legacy.md", append="INJECTED")
+
+    assert "error" in result, "a non-UTF-8 file must be refused, not silently rewritten"
+    assert "utf-8" in result["error"].lower()
+
+    after = target.read_bytes()
+    assert after == before, "the on-disk bytes must be untouched by a refused update"
+
+
+def test_update_note_strips_bom_without_duplicating_frontmatter(vault):
+    """The strict decode in update_note must still handle a BOM like _read_safe does.
+
+    A plain utf-8 decode would leave U+FEFF glued to the first line, which stops
+    _split_frontmatter from recognizing the leading "---" and makes update_note
+    write a second frontmatter block on top of the original.
+    """
+    v, ops = vault
+    target = v / "bom.md"
+    target.write_text("---\ntype: note\n---\n\nbody\n", encoding="utf-8-sig")
+
+    result = ops.update_note("bom.md", append="APPENDED")
+    assert "updated" in result, result
+
+    written = target.read_text(encoding="utf-8")
+    assert written.count("\n---\n") == 1, "the BOM caused a duplicate frontmatter block"
+    assert "APPENDED" in written
+
+
 def test_link_matching_is_nfc_insensitive(vault):
     """macOS stores filenames decomposed; a typed wikilink is composed."""
     _, ops = vault

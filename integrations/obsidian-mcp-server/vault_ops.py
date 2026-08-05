@@ -763,9 +763,31 @@ def update_note(
         return {"error": "path is outside the vault"}
     if {p.lower() for p in target.relative_to(vault).parts} & _PROTECTED_WRITE_DIRS:
         return {"error": "path is in a protected directory"}
-    text = _read_safe(target)
-    if text is None:
+    try:
+        if not target.is_file():
+            return {"error": f"not found: {rel} (update_note only edits existing notes)"}
+        raw = target.read_bytes()
+    except OSError:
         return {"error": f"not found: {rel} (update_note only edits existing notes)"}
+    # Strict decode, not _read_safe: _read_safe uses errors="replace", which would
+    # turn every non-UTF-8 byte into U+FFFD and then _write_atomic would burn that
+    # loss into the file permanently on this read-edit-write path. Read-only tools
+    # (read_note, search, backlinks, vault_health) stay forgiving on purpose; this
+    # is the one path that must refuse instead of silently corrupting the note.
+    try:
+        # utf-8-sig, matching _read_safe: strips a leading BOM (Windows editors and
+        # several sync tools emit one) instead of leaving it glued to the rebuilt
+        # frontmatter block below, which would otherwise stop `_split_frontmatter`
+        # from recognizing "---" and duplicate the frontmatter on write-back.
+        # errors defaults to "strict", so a genuinely non-UTF-8 byte still raises.
+        text = raw.decode("utf-8-sig")
+    except UnicodeDecodeError as exc:
+        return {
+            "error": (
+                f"{rel} is not valid UTF-8 ({exc}); refusing to edit it to avoid "
+                "corrupting non-UTF-8 content on write-back"
+            )
+        }
     if not append and not set_fields:
         return {"error": "nothing to update: provide append and/or set_fields"}
 
