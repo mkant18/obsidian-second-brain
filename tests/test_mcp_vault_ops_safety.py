@@ -102,9 +102,28 @@ def test_link_matching_is_nfc_insensitive(vault):
 def test_write_preserves_mode(vault):
     v, ops = vault
     target = v / "note.md"
-    target.chmod(0o600)
-    ops.update_note("note.md", append="more")
-    assert target.stat().st_mode & 0o777 == 0o600, "the rewrite dropped the permission bits"
+
+    if sys.platform.startswith("win"):
+        # NTFS has no POSIX permission bits: chmod only flips the read-only
+        # attribute, and st_mode always reports 0o666/0o444, never 0o600, so
+        # the POSIX assertion below is meaningless here. The equivalent
+        # guarantee on Windows is that _write_atomic carries the target's
+        # mode onto its temp file before replacing, so a read-only target
+        # makes the replace step itself fail (PermissionError) instead of
+        # silently dropping the protection - the write is refused, not
+        # weakened.
+        target.chmod(0o444)
+        try:
+            with pytest.raises(OSError):
+                ops.update_note("note.md", append="more")
+            assert "more" not in target.read_text(encoding="utf-8"), "a refused write must not land"
+        finally:
+            target.chmod(0o666)  # let pytest's tmp_path cleanup remove it
+    else:
+        target.chmod(0o600)
+        ops.update_note("note.md", append="more")
+        assert target.stat().st_mode & 0o777 == 0o600, "the rewrite dropped the permission bits"
+
     assert not list(v.glob(".*.tmp")), "a temp file survived a successful write"
 
 

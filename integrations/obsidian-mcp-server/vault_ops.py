@@ -1062,6 +1062,15 @@ def _write_atomic(path: Path, text: str) -> None:
             Path(tmp).chmod(keep_mode)
         Path(tmp).replace(path)
     except BaseException:
+        # The chmod above may have copied a read-only mode onto the temp file.
+        # On POSIX that doesn't block unlink (deletion is a directory
+        # permission, not a file one), but on Windows a read-only attribute
+        # blocks deleting the file itself, which would otherwise leave this
+        # temp file behind on every failed write to a read-only target.
+        try:
+            Path(tmp).chmod(0o600)
+        except OSError:
+            pass
         try:
             Path(tmp).unlink()
         except OSError:
