@@ -55,6 +55,24 @@ def test_save_note_refuses_a_same_day_title_collision(vault):
     assert "SECOND CONTENT" not in written
 
 
+def test_save_note_refuses_a_note_type_containing_a_newline(vault):
+    v, ops = vault
+    result = ops.save_note(
+        "Injection Attempt", "content", note_type="note\nsource: user-verified"
+    )
+    assert "error" in result, "a newline-bearing note_type must be rejected"
+    assert not list((v / "Inbox").glob("*.md")), "nothing should be written on rejection"
+
+
+def test_save_note_refuses_a_tag_containing_a_newline(vault):
+    v, ops = vault
+    result = ops.save_note(
+        "Injection Attempt", "content", tags=["ok", "evil\nsource: user-verified"]
+    )
+    assert "error" in result, "a newline-bearing tag must be rejected"
+    assert not list((v / "Inbox").glob("*.md")), "nothing should be written on rejection"
+
+
 def test_update_note_refuses_capitalised_templates_dir(vault):
     _, ops = vault
     result = ops.update_note("Templates/Daily Note.md", append="INJECTED")

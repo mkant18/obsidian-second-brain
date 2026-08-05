@@ -682,6 +682,9 @@ def read_note(rel: str) -> Dict[str, Any]:
     return {"path": rel, "content": text[:_READ_CAP]}
 
 
+_NOTE_TYPE_RE = re.compile(r"^[A-Za-z0-9_-]+$")
+
+
 def save_note(
     title: str,
     content: str,
@@ -696,7 +699,16 @@ def save_note(
     if not title or not content:
         return {"error": "title and content are required"}
     note_type = (note_type or "note").strip() or "note"
+    # P1-4: note_type and tags are interpolated straight into YAML frontmatter
+    # below. A newline (or a leading '-'/':') would inject arbitrary frontmatter
+    # lines - e.g. spoofing `source: mcp` or forging fields with retrieval
+    # semantics. Reject rather than silently sanitize, so the caller finds out.
+    if not _NOTE_TYPE_RE.match(note_type):
+        return {"error": f"invalid note_type: {note_type!r} (must match ^[A-Za-z0-9_-]+$)"}
     tags = [str(t) for t in (tags or [note_type])]
+    for t in tags:
+        if "\n" in t or "\r" in t or t.startswith("-") or t.startswith(":"):
+            return {"error": f"invalid tag: {t!r} (no newlines, no leading '-' or ':')"}
 
     inbox = vault / _NOTES_DIR
     inbox.mkdir(parents=True, exist_ok=True)
