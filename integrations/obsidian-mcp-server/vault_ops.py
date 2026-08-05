@@ -123,6 +123,10 @@ _LOG_FOLDERS = {"logs", "daily", "dev logs"}
 _STALE_STATUSES = {"superseded", "declined", "rejected", "archived", "obsolete",
                    "cancelled", "closed", "parked", "inactive", "done"}
 _STATUS_RE = re.compile(r"(?m)^status:\s*['\"]?([A-Za-z0-9_-]+)")
+# Keys update_note is allowed to set/replace in frontmatter. Anything else (or
+# a value containing a newline) is rejected before _apply_fields ever runs -
+# see update_note.
+_FIELD_KEY_RE = re.compile(r"^[A-Za-z0-9_-]+$")
 # The supersedes REVERSE edge (fork-insights round 2, the local-first memory
 # fork): when ADR A declares `supersedes: "[[B]]"`, B should fade even if B's
 # own status was never updated - the exact "vault forgot to update the old
@@ -806,6 +810,19 @@ def update_note(
     fm_lines, body, _ = _split_frontmatter(text)
     fields = {str(k): str(v) for k, v in (set_fields or {}).items()}
     fields.setdefault("updated", datetime.now().strftime("%Y-%m-%d"))
+    # _apply_fields does a line-level splice: a key that fails
+    # ^[A-Za-z0-9_-]+$ could break the `key:` line regex it matches against,
+    # and a newline embedded in a value would turn one frontmatter line into
+    # two - smuggling an attacker-chosen second key (e.g. `status: archived`)
+    # into the frontmatter block without going through this function's own
+    # `fields` dict, which is what the stale-status disclosure below checks.
+    # Reject both up front instead of writing a value that could corrupt the
+    # YAML or bypass that check.
+    for key, value in fields.items():
+        if not _FIELD_KEY_RE.match(key):
+            return {"error": f"invalid frontmatter key {key!r}: must match ^[A-Za-z0-9_-]+$"}
+        if "\n" in value or "\r" in value:
+            return {"error": f"frontmatter value for {key!r} contains a newline; refusing to write it"}
     fm_lines = _apply_fields(fm_lines, fields)
 
     new_body = body
@@ -1193,15 +1210,39 @@ def _split_frontmatter(text: str):
     return [], text, False
 
 
+_BLOCK_SCALAR_RE = re.compile(r":\s*[|>][0-9+-]*\s*$")
+
+
 def _apply_fields(fm_lines: List[str], fields: Dict[str, str]) -> List[str]:
-    """Set/replace scalar frontmatter keys, preserving every other line as-is."""
+    """Set/replace scalar frontmatter keys, preserving every other line as-is.
+
+    Callers must have already rejected keys and values that would make the
+    line-level splice below unsafe (see update_note): invalid key characters
+    and newlines embedded in a value. This function additionally handles the
+    one other way a single-line replace can corrupt YAML: if the key being
+    replaced currently holds a block scalar (`key: |` / `key: >`, optionally
+    with a chomping/indent indicator like `|-` or `>2`), the lines below it
+    up to the next non-blank, non-indented line are its continuation and
+    belong to it. Replacing only the header line would leave those orphaned
+    as invalid top-level YAML, so they are dropped along with it.
+    """
     lines = list(fm_lines)
     remaining = dict(fields)
-    for i, line in enumerate(lines):
+    out: List[str] = []
+    i = 0
+    while i < len(lines):
+        line = lines[i]
         m = re.match(r"^([A-Za-z0-9_-]+):", line)
         if m and m.group(1) in remaining:
             key = m.group(1)
-            lines[i] = f"{key}: {remaining.pop(key)}"
+            out.append(f"{key}: {remaining.pop(key)}")
+            i += 1
+            if _BLOCK_SCALAR_RE.search(line):
+                while i < len(lines) and (lines[i].strip() == "" or lines[i][:1] in (" ", "\t")):
+                    i += 1
+            continue
+        out.append(line)
+        i += 1
     for k, v in remaining.items():
-        lines.append(f"{k}: {v}")
-    return lines
+        out.append(f"{k}: {v}")
+    return out
