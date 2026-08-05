@@ -11,7 +11,7 @@ Use the obsidian-second-brain skill. Execute `/obsidian-emerge $ARGUMENTS`:
 
 The optional argument is a timeframe (e.g., "2 weeks", "this month"). Default: last 30 days.
 
-1. Read `_CLAUDE.md` first if it exists in the vault root
+1. If the vault operating manual (`_CLAUDE.md`) is not already in your context, read it from the vault root
 2. Determine the date range from the argument (default: last 30 days)
 3. Spawn parallel subagents to read vault content from the period:
    - **Daily notes agent**: read all daily notes in the date range, extract recurring topics, complaints, observations, and energy patterns

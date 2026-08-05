@@ -11,7 +11,7 @@ Use the obsidian-second-brain skill. Execute `/obsidian-project $ARGUMENTS`:
 
 The argument is a project name. Handle typos and partial matches.
 
-1. Read `_CLAUDE.md` first if it exists in the vault root
+1. If the vault operating manual (`_CLAUDE.md`) is not already in your context, read it from the vault root
 2. Search the vault for an existing project matching the name (fuzzy - handle typos)
 3. If found: show what was found, confirm with user, then update with new info from conversation
 4. If not found: create `Project Name.md` in the projects folder (resolved per `references/folder-map.md` - wiki-style `wiki/projects/`, Obsidian-style `Projects/`) with the full `type: project` schema from `references/ai-first-rules.md` (`type: project`, `date`, `updated`, `status: active`, `tags: [project]`, `related-people`, `related-projects`, optional `job`, `ai-first: true`)

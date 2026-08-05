@@ -13,7 +13,7 @@ Optional argument: a specific project name. If given, show deep context for that
 
 ## Step 1 - discover projects
 
-Read `_CLAUDE.md` to find the projects folder name, resolved per `references/folder-map.md` (wiki-style `wiki/projects/`, Obsidian-style `Projects/`). If not defined, default to the wiki-style `wiki/projects/`.
+If the vault operating manual (`_CLAUDE.md`) is not already in your context, read it from the vault root to find the projects folder name, resolved per `references/folder-map.md` (wiki-style `wiki/projects/`, Obsidian-style `Projects/`). If not defined, default to the wiki-style `wiki/projects/`.
 
 Scan that folder for all `.md` files. For each file, read its frontmatter. A note is a tracked project if it has `type: project` OR lives in the projects folder and has a `repo:` field. Collect:
 

@@ -11,7 +11,7 @@ Use the obsidian-second-brain skill. Execute `/obsidian-visualize $ARGUMENTS`:
 
 The optional argument is a scope: an EXACT note title or alias (a project, an entity), or "full" for the entire vault. Default: full vault. A free-form topic phrase will not match - resolve it to a real note title first (e.g. via /obsidian-find).
 
-1. Read `_CLAUDE.md` first if it exists in the vault root
+1. If the vault operating manual (`_CLAUDE.md`) is not already in your context, read it from the vault root
 
 2. Build the graph deterministically with the scanner instead of reading every note into context (a full-vault read is O(read-everything) and burns the budget). Run from the skill root (its absolute path was given at session start as **Skill root**; substitute it for `SKILL_ROOT`):
    ```bash

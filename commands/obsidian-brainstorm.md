@@ -16,7 +16,7 @@ Every other thinking tool in this skill is a single-shot analytical pass. This o
 
 ## Phase 1 - ground in the vault (silent, no LLM theatrics)
 
-1. Read `_CLAUDE.md` first if it exists in the vault root
+1. If the vault operating manual (`_CLAUDE.md`) is not already in your context, read it from the vault root
 2. Search the vault for the topic: related project notes, past decisions (Key Decisions sections, ADRs), idea fragments, and open questions (`TBD`, `TODO`, open-question sections). This is context for your questions - do not dump it at the user
 3. Note contradictions or prior failures the vault records about this topic; they become questions in Phase 2
 

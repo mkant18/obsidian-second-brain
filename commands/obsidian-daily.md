@@ -10,7 +10,7 @@ triggers_zh: ["打开今天的日记", "创建今天的每日笔记", "更新今
 
 Use the obsidian-second-brain skill. Execute `/obsidian-daily`:
 
-1. Read `_CLAUDE.md` first if it exists in the vault root
+1. If the vault operating manual (`_CLAUDE.md`) is not already in your context, read it from the vault root
 2. If `CRITICAL_FACTS.md` exists in the vault root, read it for timezone; otherwise use the system timezone
 
 3. Check if today's `YYYY-MM-DD.md` exists in the daily folder, resolved per `references/folder-map.md` (wiki-style `wiki/daily/`, Obsidian-style `Daily/`)

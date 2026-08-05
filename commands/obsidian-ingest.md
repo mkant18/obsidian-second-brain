@@ -11,7 +11,7 @@ Use the obsidian-second-brain skill. Execute `/obsidian-ingest $ARGUMENTS`:
 
 The argument is a URL, file path, or pasted text. If no argument, ask what to ingest.
 
-1. Read `_CLAUDE.md` first if it exists in the vault root
+1. If the vault operating manual (`_CLAUDE.md`) is not already in your context, read it from the vault root
 
 2. Classify the source type before reading the full content:
    - **Article/blog post** - extract key claims, people, tools, concepts

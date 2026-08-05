@@ -11,7 +11,7 @@ Use the obsidian-second-brain skill. Execute `/obsidian-reconcile $ARGUMENTS`:
 
 The optional argument is a topic or entity to focus on. If not provided, scan the whole vault.
 
-1. Read `_CLAUDE.md` first if it exists in the vault root
+1. If the vault operating manual (`_CLAUDE.md`) is not already in your context, read it from the vault root
 2. Read `index.md` to understand the full vault landscape
 
 3. Spawn parallel subagents to find contradictions:
