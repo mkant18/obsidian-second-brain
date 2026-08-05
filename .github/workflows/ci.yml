@@ -11,8 +11,16 @@ permissions:
 
 jobs:
   smoke:
-    name: Smoke tests
-    runs-on: ubuntu-latest
+    name: Smoke tests (${{ matrix.os }})
+    # Windows never ran here before (P0-2): the whole job was pinned to
+    # ubuntu-latest, so Windows-only breakage in the Python test suite was
+    # structurally invisible. fail-fast is off so a red Windows leg never
+    # cancels the ubuntu leg's signal.
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
@@ -27,40 +35,77 @@ jobs:
       # CLAUDE.md declares ruff as the Python standard but nothing ran it.
       # The gated set is pinned in pyproject [tool.ruff.lint]; see the comment
       # there for what is deliberately excluded and why.
+      # ubuntu-only: not part of this item's ask (pytest below is) and not
+      # verified portable.
       - name: Lint Python
+        if: matrix.os == 'ubuntu-latest'
         run: ruff check .
+      # continue-on-error on Windows: as of this change, ~28 tests still fail
+      # here for pre-existing reasons unrelated to P1-6/P1-7, mainly:
+      #   1. subprocess.run(["bash", str(some_windows_path)]) - MSYS bash
+      #      mangles a backslash-separated absolute path passed as its own
+      #      argv (confirmed locally: `bash -n 'C:\...\foo.sh'` fails with
+      #      "No such file or directory" because the backslashes are consumed
+      #      as escapes before bash ever sees a path). The majority of the
+      #      failures are this one pattern, in tests that shell out to the
+      #      repo's bash scripts/hooks.
+      #   2. A couple of tests set env["HOME"] to redirect Path.home() but
+      #      not USERPROFILE, which is what Path.home() actually reads on
+      #      Windows, so the redirect is a no-op there.
+      #   3. One test (link_graph NFC/NFD composition) depends on a
+      #      filesystem-normalization difference that mirrors macOS, not
+      #      Windows.
+      # These are real, separate bugs in the tests/tooling, pre-existing and
+      # out of scope for P0-2 (which only asks to make Windows breakage
+      # visible, not to fix it). They need their own follow-up backlog item(s)
+      # before this leg can be made blocking.
       - name: Run smoke tests
+        if: matrix.os == 'ubuntu-latest'
+        run: pytest -q
+      - name: Run smoke tests (non-blocking on Windows)
+        if: matrix.os == 'windows-latest'
+        continue-on-error: true
         run: pytest -q
       # Fail the build if a banned substitution character (em-dash, curly quote,
       # Unicode math, ...) appears in prose in any tracked source file. Characters
       # inside code fences / backtick spans are preserved and never fail.
+      # ubuntu-only: not part of this item's ask.
       - name: Lint substitution characters
+        if: matrix.os == 'ubuntu-latest'
         run: python scripts/sweep_non_ascii.py --check
       # The README publishes a per-platform conformance board. Fail if it no
       # longer matches a real build, so the published table cannot go stale and
       # a regression on a platform the maintainer does not personally use
       # cannot pass unnoticed. Regenerate with:
       #   uv run python scripts/conformance_report.py --write
+      # ubuntu-only: not part of this item's ask.
       - name: Verify the conformance board is current
+        if: matrix.os == 'ubuntu-latest'
         run: python scripts/conformance_report.py --check
 
       # docs/ is generated from commands/, so a command whose description or
       # triggers changed without a site rebuild would ship a page that
       # contradicts the command it documents. Regenerate with:
       #   uv run python scripts/build_site.py
+      # ubuntu-only: not part of this item's ask.
       - name: Verify the docs site is current
+        if: matrix.os == 'ubuntu-latest'
         run: python scripts/build_site.py --check
 
       # The Obsidian plugin is a second implementation of AI-FIRST.md, in a
       # second language, so it needs its own gate. A linter's failure mode is
       # false positives, and most of these tests are about not firing.
+      # ubuntu-only: this is the expensive/non-portable leg the item allows
+      # to stay off the Windows matrix.
       - uses: actions/setup-node@v7
+        if: matrix.os == 'ubuntu-latest'
         with:
           node-version: '20'
           cache: npm
           cache-dependency-path: integrations/obsidian-plugin/package-lock.json
 
       - name: Obsidian plugin - typecheck, build and test
+        if: matrix.os == 'ubuntu-latest'
         working-directory: integrations/obsidian-plugin
         run: |
           npm ci --no-audit --no-fund
