@@ -128,7 +128,13 @@ def test_semantic_only_hit_gets_a_snippet(vault, monkeypatch):
     # meaning-only.md's path never appeared in the lexical results passed in
     # above, so it is a genuinely semantic-only hit.
     assert "meaning-only.md" not in {r["path"] for r in lexical}
-    assert by_path["meaning-only.md"]["snippet"] != ""
+    snippet = by_path["meaning-only.md"]["snippet"]
+    assert snippet != ""
+    # Must be a usable snippet of the body, not just the mandatory YAML
+    # frontmatter every vault note opens with (that would still force a
+    # follow-up obsidian_read_note to see actual content).
+    assert "embedding similarity" in snippet
+    assert "type: note" not in snippet
     assert by_path["lexical-match.md"]["snippet"] == "beacon appears right here in the body."
 
 

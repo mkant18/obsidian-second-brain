@@ -583,8 +583,14 @@ def _semantic_fuse(
                 # matched no query term at all), so there is nothing in `snippet`
                 # to reuse. Without this, a note ranked purely by meaning surfaced
                 # with an empty snippet, forcing a follow-up obsidian_read_note
-                # call just to see why it matched (P1-3).
-                r["snippet"] = _semantic_only_snippet(vault, r["path"], query)
+                # call just to see why it matched (P1-3). Guarded per-result so a
+                # single unreadable file only costs that one snippet, not the
+                # whole fused ranking (the outer except would otherwise fall back
+                # to pure lexical for every result over one bad path).
+                try:
+                    r["snippet"] = _semantic_only_snippet(vault, r["path"], query)
+                except Exception:
+                    pass
         return out
     except Exception:
         return None  # any failure -> pure lexical, never break search
@@ -599,16 +605,20 @@ def _semantic_only_snippet(vault: Path, rel_path: str, query: str) -> str:
     re-embedding. Read the note fresh instead and reuse the same term-anchored
     window _snippet already builds for lexical hits; if none of the query terms
     appear in the body (a pure meaning match with no literal overlap), _snippet
-    falls back to the note's first _SNIPPET_CHARS characters, which is still a
-    real snippet instead of the empty string that used to force a follow-up
-    obsidian_read_note call."""
+    falls back to the first _SNIPPET_CHARS characters - of the body, not the raw
+    file, since every vault note opens with a mandatory YAML frontmatter block
+    (references/ai-first-rules.md) and a snippet that is just `type: ...` /
+    `tags: ...` lines would still force the exact follow-up read this exists to
+    avoid. Either way this is still a real snippet instead of the empty string
+    that used to force a follow-up obsidian_read_note call."""
     target = _resolve_in_vault(vault, rel_path)
     if target is None:
         return ""
     text = _read_safe(target, limit=_MAX_FILE_BYTES)
     if not text:
         return ""
-    return _snippet(text, _query_terms(query))
+    _, body, _ = _split_frontmatter(text)
+    return _snippet(body or text, _query_terms(query))
 
 
 def search(query: str, *, limit: int = 6, semantic: Optional[bool] = None) -> List[Dict[str, Any]]:
