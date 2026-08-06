@@ -130,7 +130,7 @@ Use the obsidian-second-brain skill. Execute `/<name> $ARGUMENTS`:
 
 <one-sentence framing tying the user's intent (Phase 1) to the action>
 
-1. Read `_CLAUDE.md` first if it exists in the vault root
+1. If the vault operating manual (`_CLAUDE.md`) is not already in your context, read it from the vault root
 2. <step from Phase 5, step 1>
 3. <step from Phase 5, step 2>
 4. <step from Phase 5, step 3>

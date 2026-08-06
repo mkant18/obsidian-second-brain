@@ -13,7 +13,7 @@ You cannot improve retrieval you have not measured. This scores the vault's REAL
 
 The optional argument is a number of cases to (re)generate first (without `XAI_API_KEY` the generator silently falls back to verbatim-sentence heuristics - fine for keyword-style cases, weak for paraphrase-style) (e.g. `30`), or `report` to also write the result to the vault. No argument: evaluate the existing cases.
 
-1. Read `_CLAUDE.md` first if it exists in the vault root.
+1. If the vault operating manual (`_CLAUDE.md`) is not already in your context, read it from the vault root.
 
 2. If the user asked to generate (or no cases file exists yet at `scripts/eval/retrieval_cases.jsonl`), bootstrap the eval set from the vault. Run from the skill root (its absolute path was given at session start as **Skill root**; substitute it for `SKILL_ROOT`):
    ```bash

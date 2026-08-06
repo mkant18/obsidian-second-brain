@@ -13,7 +13,7 @@ The optional argument is a timeframe filter: `today`, `week`, or `all` (default:
 
 This is the laptop-side companion to the Telegram journal bot (`integrations/telegram-journal/`). The bot captures on the go (voice / text / image / PDF / link) and appends each one to a `catchup.md` queue in the vault. This command is where those captures become real, integrated vault knowledge - on your schedule, with you driving. It is a PULL: nothing was processed automatically, so nothing surprises you.
 
-1. Read `_CLAUDE.md` first if it exists in the vault root (for vault paths + conventions).
+1. If the vault operating manual (`_CLAUDE.md`) is not already in your context, read it from the vault root (for vault paths + conventions).
 2. Read `catchup.md` in the vault root - the queue the bot fills. Each line is `- [ ] date time | kind | summary` plus, only when the bot saved the item somewhere, a trailing ` | -> where` link. An unchecked `- [ ]` is unprocessed; `- [x]` is already done.
 3. Collect the unchecked items. Apply the timeframe filter if given (`today` = today's date; `week` = the last 7 days; `all` = every unchecked). If there are none, say "nothing to catch up on" and stop.
 4. Show the user a tight list, grouped by age (**Today** / **This week** / **Older**): time, kind, summary, and the `[[link]]` to where it landed (when present). Flag stale ones explicitly (e.g. "captured 9 days ago - still relevant?"), since a capture that mattered on a walk may be dead now.

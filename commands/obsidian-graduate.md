@@ -11,7 +11,7 @@ Use the obsidian-second-brain skill. Execute `/obsidian-graduate $ARGUMENTS`:
 
 The optional argument is the idea title, tag, or keyword. If not provided, scan recent notes for ideas tagged `#idea` or in the ideas folder (resolved per `references/folder-map.md`) and present them for selection.
 
-1. Read `_CLAUDE.md` first if it exists in the vault root. Resolve the ideas folder and projects folder per `references/folder-map.md` (wiki-style: ideas in `wiki/concepts/`, projects in `wiki/projects/`; Obsidian-style: `Ideas/`, `Projects/`).
+1. If the vault operating manual (`_CLAUDE.md`) is not already in your context, read it from the vault root. Resolve the ideas folder and projects folder per `references/folder-map.md` (wiki-style: ideas in `wiki/concepts/`, projects in `wiki/projects/`; Obsidian-style: `Ideas/`, `Projects/`).
 2. Find the idea to graduate:
    - If argument given: search the ideas folder, daily notes, and captures for a matching idea (fuzzy match)
    - If no argument: list recent ideas (last 14 days) and ask the user to pick one

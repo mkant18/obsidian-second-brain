@@ -12,7 +12,7 @@ Use the obsidian-second-brain skill. Execute `/obsidian-capture $ARGUMENTS`:
 
 The optional argument is the idea text. If not provided, pull the most recent idea or thought from the conversation.
 
-1. Read `_CLAUDE.md` first if it exists in the vault root
+1. If the vault operating manual (`_CLAUDE.md`) is not already in your context, read it from the vault root
 2. Take the argument as the idea, or pull from recent conversation context
 3. Resolve the idea folder per `references/folder-map.md` (read the vault's `_CLAUDE.md` Folder Map first; wiki-style ideas live in `wiki/concepts/`, Obsidian-style in `Ideas/`). Search it for a related existing note - if found, append to it
 4. If new: create `<idea-folder>/Title.md` with the capture schema (`type: idea`, `date`, `tags: [idea]`, `ai-first: true`, `status: captured`, one-line body) - the documented capture exception in `references/ai-first-rules.md`: enrichment happens at graduation

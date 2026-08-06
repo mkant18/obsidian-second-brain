@@ -9,7 +9,7 @@ triggers_zh: ["加载我的完整背景", "告诉我现在的整体状况", "读
 
 Use the obsidian-second-brain skill. Execute `/obsidian-world`:
 
-1. Read `_CLAUDE.md` first if it exists in the vault root
+1. If the vault operating manual (`_CLAUDE.md`) is not already in your context, read it from the vault root
 
 2. Load context progressively - start light, go deeper only as needed:
 

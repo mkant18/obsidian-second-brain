@@ -21,7 +21,7 @@ If no mode word is given, infer it: a bare range word (`today`, `week`, `next-we
 
 All modes require a Google Calendar MCP. The claude.ai connector exposes `mcp__claude_ai_Google_Calendar__list_calendars`, `list_events`, `get_event`, `create_event`, `update_event`, `suggest_time`; if your calendar MCP namespaces its tools differently, use that server's equivalents. If no calendar MCP is connected, say so clearly and stop - do not fall back to asking the user to paste their calendar.
 
-Always start by reading `_CLAUDE.md` (folder conventions, working hours) and `CRITICAL_FACTS.md` (timezone) if they exist. If neither declares a timezone, default to the session timezone and note that as a caveat. Resolve every folder per `references/folder-map.md` (wiki-style paths shown below).
+If the vault operating manual (`_CLAUDE.md`) is not already in your context, read it from the vault root (folder conventions, working hours); read `CRITICAL_FACTS.md` (timezone) too if it exists and is not already in context. If neither declares a timezone, default to the session timezone and note that as a caveat. Resolve every folder per `references/folder-map.md` (wiki-style paths shown below).
 
 ---
 

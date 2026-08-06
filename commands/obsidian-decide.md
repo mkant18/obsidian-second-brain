@@ -15,7 +15,7 @@ Two depths, one command. The optional argument narrows focus to a topic. Add `--
 - **Default (lightweight):** capture decisions from the conversation as dated one-liners in the relevant project notes. Use for the steady stream of choices made while working.
 - **`--formal` (ADR):** write one structured decision record with context, options, rationale, and consequences. Use for a structural or directional decision worth a full writeup (a folder reorg, a convention adopted, an idea graduated, a stack choice).
 
-1. Read `_CLAUDE.md` first if it exists in the vault root.
+1. If the vault operating manual (`_CLAUDE.md`) is not already in your context, read it from the vault root.
 
 ### Lightweight mode (default)
 

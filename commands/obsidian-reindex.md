@@ -11,7 +11,7 @@ Use the obsidian-second-brain skill. Execute `/obsidian-reindex`:
 
 The semantic index is incremental. An existing, current index is cheap to refresh because only new and changed notes are embedded again.
 
-1. Read `_CLAUDE.md` first to find the vault path. Resolve it to an absolute path and substitute it for `VAULT_PATH` below. The skill root was given at session start as **Skill root**; substitute its absolute path for `SKILL_ROOT`.
+1. If the vault operating manual (`_CLAUDE.md`) is not already in your context, read it from the vault root to find the vault path. Resolve it to an absolute path and substitute it for `VAULT_PATH` below. The skill root was given at session start as **Skill root**; substitute its absolute path for `SKILL_ROOT`.
 
 2. Measure coverage before changing the index:
    ```bash
