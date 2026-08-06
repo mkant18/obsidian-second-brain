@@ -923,18 +923,23 @@ def validate_note(rel: str) -> Dict[str, Any]:
     return {"path": rel, "ok": not issues, "issues": issues}
 
 
-def backlinks(target: str) -> Dict[str, Any]:
+def backlinks(target: str, *, limit: int = 50) -> Dict[str, Any]:
     """Find every note that links to `target` via [[wikilink]].
 
     `target` may be a note title/stem or a vault-relative path; both resolve to
     the note's stem for matching (aliases `[[Note|alias]]` and folder-qualified
     links `[[folder/Note]]` are handled).
+
+    limit: maximum number of backlinks to return (capped at 1000). The 'count'
+    field always reflects the true total number of backlinks found; truncated
+    indicates whether there are more results than the limit.
     """
     vault = resolve_vault()
     key = (target or "").strip()
     if not key:
         return {"error": "target is required"}
     stem = _norm_link(Path(key).name if "/" in key or key.endswith(".md") else key)
+    limit = max(1, min(int(limit), 1000))
     refs: List[str] = []
     for i, md in enumerate(_iter_notes(vault)):
         if i >= _MAX_FILES_SCANNED:
@@ -944,7 +949,14 @@ def backlinks(target: str) -> Dict[str, Any]:
             rel = str(md.relative_to(vault))
             if md.stem.lower() != stem:  # don't list the note itself
                 refs.append(rel)
-    return {"target": stem, "count": len(refs), "backlinks": sorted(refs)}
+    total = len(refs)
+    sorted_refs = sorted(refs)
+    return {
+        "target": stem,
+        "count": total,
+        "backlinks": sorted_refs[:limit],
+        "truncated": total > limit,
+    }
 
 
 def vault_health() -> Dict[str, Any]:

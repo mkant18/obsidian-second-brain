@@ -858,6 +858,52 @@ def test_mcp_vault_ops_validate_and_backlinks_and_health(tmp_path, monkeypatch):
     assert any(b["link"] == "Ghost Note" for b in health["wanted_notes"]["sample"])
 
 
+def test_mcp_vault_ops_backlinks_respects_limit_and_truncated(tmp_path, monkeypatch):
+    """backlinks respects the limit parameter and returns truncated flag.
+
+    A note with more backlinks than the default/specified limit returns count
+    (the true total), len(backlinks)==limit, and truncated=true. Backlinks
+    are always sorted regardless of limit."""
+    vault_ops = _load_vault_ops()
+    vault = tmp_path / "vault"
+    vault.mkdir()
+    monkeypatch.setenv("OBSIDIAN_VAULT_PATH", str(vault))
+
+    # Create target note
+    (vault / "Target.md").write_text(
+        "---\ntype: note\ndate: 2026-06-27\ntags:\n  - x\nai-first: true\n---\n\n"
+        "## For future Claude\nThis is the target.\n",
+        encoding="utf-8",
+    )
+
+    # Create 60 notes that link to Target
+    for i in range(60):
+        (vault / f"Linker-{i:02d}.md").write_text(
+            "---\ntype: note\ndate: 2026-06-27\ntags:\n  - x\nai-first: true\n---\n\n"
+            "## For future Claude\nSee [[Target]].\n",
+            encoding="utf-8",
+        )
+
+    # Test default limit (50)
+    bl = vault_ops.backlinks("Target")
+    assert bl["count"] == 60, "count must be the true total"
+    assert len(bl["backlinks"]) == 50, "returned list must respect default limit"
+    assert bl["truncated"] is True, "truncated must be true when count > limit"
+    assert bl["backlinks"] == sorted(bl["backlinks"]), "backlinks must be sorted"
+
+    # Test custom limit
+    bl_custom = vault_ops.backlinks("Target", limit=20)
+    assert bl_custom["count"] == 60, "count must remain the true total"
+    assert len(bl_custom["backlinks"]) == 20, "returned list must respect custom limit"
+    assert bl_custom["truncated"] is True, "truncated must be true when count > limit"
+
+    # Test limit larger than count (no truncation)
+    bl_large = vault_ops.backlinks("Target", limit=100)
+    assert bl_large["count"] == 60, "count must be the true total"
+    assert len(bl_large["backlinks"]) == 60, "returned list must be complete"
+    assert bl_large["truncated"] is False, "truncated must be false when count <= limit"
+
+
 def test_mcp_vault_ops_skips_claude_dir(tmp_path, monkeypatch):
     """The MCP connector must not scan a vault-local .claude/ config dir as notes
     (issue #80). search and vault_health should ignore it entirely."""
