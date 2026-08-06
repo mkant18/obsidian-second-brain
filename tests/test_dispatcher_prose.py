@@ -17,13 +17,13 @@ exists in that platform's own tree.
 """
 
 from __future__ import annotations
-from conftest import BASH
 
 import re
 import subprocess
 from pathlib import Path
 
 import pytest
+from conftest import BASH
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 ADAPTERS = REPO_ROOT / "adapters"

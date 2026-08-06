@@ -8,11 +8,12 @@ and cross-referenced.
 """
 
 from __future__ import annotations
-from conftest import BASH
 
 import subprocess
 import sys
 from pathlib import Path
+
+from conftest import BASH
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 

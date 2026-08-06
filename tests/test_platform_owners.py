@@ -12,7 +12,6 @@ the table and the builds can disagree, the incentive quietly stops existing.
 """
 
 from __future__ import annotations
-from conftest import BASH
 
 import re
 import shutil
@@ -20,6 +19,7 @@ import subprocess
 from pathlib import Path
 
 import pytest
+from conftest import BASH
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 OWNERS = REPO_ROOT / "adapters" / "OWNERS.md"
