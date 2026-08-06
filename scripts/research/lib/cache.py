@@ -35,7 +35,12 @@ def get(source: str, query: str, ttl_hours: int) -> list[dict[str, Any]] | None:
     if not path.exists():
         return None
     age_s = time.time() - path.stat().st_mtime
-    if age_s > ttl_hours * 3600:
+    # >= not >: a zero TTL must never hit. On Windows, st_mtime resolution and
+    # the clock leave age_s at exactly 0.0 for a file written moments earlier,
+    # so a strict > served an entry that had already expired. On Linux the
+    # timer had usually advanced by then, which is why this only ever failed
+    # on Windows -- and only once Windows started running in CI at all.
+    if age_s >= ttl_hours * 3600:
         return None
     try:
         return json.loads(path.read_text())
