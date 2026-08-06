@@ -19,6 +19,7 @@ covered the day it lands rather than the day someone remembers to add a test.
 """
 
 from __future__ import annotations
+from conftest import BASH
 
 import re
 import subprocess
@@ -52,7 +53,7 @@ def _tree_relative(cited: str) -> str:
 def built() -> Path:
     """Build every platform once, the way a release actually does it."""
     result = subprocess.run(
-        ["bash", "scripts/build.sh"],
+        [BASH, "scripts/build.sh"],
         cwd=REPO_ROOT,
         check=False,
         capture_output=True,

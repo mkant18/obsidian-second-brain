@@ -17,6 +17,7 @@ build exited 0 with a broken artifact.
 """
 
 from __future__ import annotations
+from conftest import BASH
 
 import subprocess
 from pathlib import Path
@@ -30,7 +31,7 @@ LIB = REPO_ROOT / "adapters" / "lib.sh"
 def _call(fn: str, path: Path, *args: str) -> str:
     """Invoke one lib.sh helper in isolation."""
     cmd = f'source "{LIB}"; {fn} "{path}" {" ".join(args)}'
-    result = subprocess.run(["bash", "-c", cmd], capture_output=True, text=True, check=False)
+    result = subprocess.run([BASH, "-c", cmd], capture_output=True, text=True, check=False)
     assert result.returncode == 0, result.stderr
     return result.stdout
 

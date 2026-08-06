@@ -14,6 +14,7 @@
 """
 
 from __future__ import annotations
+from conftest import BASH
 
 import re
 import subprocess
@@ -65,7 +66,7 @@ def test_the_canonical_parser_handles_the_awkward_cases():
 
 def _build(cwd=None):
     return subprocess.run(
-        ["bash", str(REPO_ROOT / "scripts" / "build.sh"), "--platform", "hermes"],
+        [BASH, str(REPO_ROOT / "scripts" / "build.sh"), "--platform", "hermes"],
         cwd=cwd or REPO_ROOT, capture_output=True, text=True, check=False,
     )
 
