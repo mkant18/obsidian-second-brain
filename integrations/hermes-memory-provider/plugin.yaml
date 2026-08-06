@@ -1,0 +1,7 @@
+name: obsidian
+version: 0.1.0
+description: "Obsidian Second Brain - use an AI-first Obsidian vault as Hermes's memory instead of the default vector store. Search-based recall, AI-first note writes, per-session transcript memory."
+requires_env:
+  - OBSIDIAN_VAULT_PATH
+hooks:
+  - on_session_end
