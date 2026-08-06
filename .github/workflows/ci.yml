@@ -4,6 +4,12 @@ on:
   push:
     branches: [main]
   pull_request:
+  # Manual trigger. Added because automatic dispatch stopped on this repo:
+  # between 2026-08-06T01:34Z and the time of writing, no event produced a run
+  # -- not pull_request, and not even a push to main, which this workflow
+  # explicitly subscribes to. A workflow_dispatch entry gives a way to get CI
+  # signal by hand while that is diagnosed, and is worth keeping regardless.
+  workflow_dispatch:
 
 # Least-privilege: this workflow only reads the repo to run tests.
 permissions:
