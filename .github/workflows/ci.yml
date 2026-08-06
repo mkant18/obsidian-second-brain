@@ -4,6 +4,8 @@ on:
   push:
     branches: [main]
   pull_request:
+  # Manual trigger: event-driven dispatch is not creating runs on this repo.
+  workflow_dispatch:
 
 # Least-privilege: this workflow only reads the repo to run tests.
 permissions:
