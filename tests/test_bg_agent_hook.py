@@ -8,6 +8,7 @@ binary, so nothing real is ever written.
 """
 
 from __future__ import annotations
+from conftest import BASH
 
 import json
 import os
@@ -37,7 +38,7 @@ def _run_hook(stdin: str, env_extra: dict, tmp_path: Path) -> subprocess.Complet
     env.pop("OBSIDIAN_VAULT_PATH", None)
     env.pop("OBSIDIAN_BG_AGENT_ENABLED", None)
     env.update(env_extra)
-    return subprocess.run(["bash", str(HOOK)], input=stdin, env=env,
+    return subprocess.run([BASH, str(HOOK)], input=stdin, env=env,
                           capture_output=True, text=True, timeout=30)
 
 

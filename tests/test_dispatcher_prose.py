@@ -17,6 +17,7 @@ exists in that platform's own tree.
 """
 
 from __future__ import annotations
+from conftest import BASH
 
 import re
 import subprocess
@@ -42,7 +43,7 @@ MARKER = "Treat the AI-first vault rule"
 @pytest.fixture(scope="module")
 def built() -> Path:
     result = subprocess.run(
-        ["bash", "scripts/build.sh"], cwd=REPO_ROOT, check=False,
+        [BASH, "scripts/build.sh"], cwd=REPO_ROOT, check=False,
         capture_output=True, text=True, encoding="utf-8", errors="replace",
     )
     assert result.returncode == 0, f"all-platforms build failed:\n{result.stderr}"

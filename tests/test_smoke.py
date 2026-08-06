@@ -9,6 +9,7 @@ any automated test). See FORK_INSIGHTS.md items #47/#48.
 """
 
 from __future__ import annotations
+from conftest import BASH
 
 import json
 import os
@@ -36,7 +37,7 @@ def test_codex_cli_build_generates_expected_files():
     Agent Skill per command (.agents/skills/<name>/SKILL.md). This guards the
     adapter pipeline that every command change depends on."""
     result = subprocess.run(
-        ["bash", "scripts/build.sh", "--platform", "codex-cli"],
+        [BASH, "scripts/build.sh", "--platform", "codex-cli"],
         cwd=REPO_ROOT,
         check=False,
         capture_output=True,
@@ -65,7 +66,7 @@ def test_hermes_build_generates_native_skills():
     skills/<category>/<name>/SKILL.md, with the required frontmatter Hermes
     needs to load it (name, description, version, author, license)."""
     result = subprocess.run(
-        ["bash", "scripts/build.sh", "--platform", "hermes"],
+        [BASH, "scripts/build.sh", "--platform", "hermes"],
         cwd=REPO_ROOT,
         check=False,
         capture_output=True,
@@ -141,7 +142,7 @@ def test_pi_build_generates_package():
     prompts/skills entries, prompt templates with frontmatter, and a discovery
     skill with valid Agent Skills frontmatter."""
     result = subprocess.run(
-        ["bash", "scripts/build.sh", "--platform", "pi"],
+        [BASH, "scripts/build.sh", "--platform", "pi"],
         cwd=REPO_ROOT,
         check=False,
         capture_output=True,
@@ -183,7 +184,7 @@ def test_agent_skills_build_generates_spec_compliant_tree():
     skills/<name>/SKILL.md per command plus the shared obsidian-core engine
     skill, with NO root SKILL.md (which would shadow the nested skills)."""
     result = subprocess.run(
-        ["bash", "scripts/build.sh", "--platform", "agent-skills"],
+        [BASH, "scripts/build.sh", "--platform", "agent-skills"],
         cwd=REPO_ROOT,
         check=False,
         capture_output=True,
@@ -1008,17 +1009,17 @@ def test_update_vault_integration_script_guards():
     script = REPO_ROOT / "scripts/update-vault-integration.sh"
     assert script.is_file()
 
-    syntax = subprocess.run(["bash", "-n", str(script)], capture_output=True, text=True)
+    syntax = subprocess.run([BASH, "-n", str(script)], capture_output=True, text=True)
     assert syntax.returncode == 0, syntax.stderr
 
-    no_vault = subprocess.run(["bash", str(script)], capture_output=True, text=True)
+    no_vault = subprocess.run([BASH, str(script)], capture_output=True, text=True)
     assert no_vault.returncode != 0
     assert "--vault is required" in no_vault.stderr
 
     import tempfile
     with tempfile.TemporaryDirectory() as tmp:
         bogus = subprocess.run(
-            ["bash", str(script), "--vault", tmp, "--platform", "bogus"],
+            [BASH, str(script), "--vault", tmp, "--platform", "bogus"],
             capture_output=True, text=True,
         )
         assert bogus.returncode != 0
@@ -1108,7 +1109,7 @@ def test_validate_hook_flags_secrets(tmp_path):
 
     def run(f):
         return subprocess.run(
-            ["bash", str(hook)],
+            [BASH, str(hook)],
             input=json.dumps({"tool_input": {"file_path": str(f)}}),
             env=dict(os.environ, OBSIDIAN_VAULT_PATH=str(tmp_path)),
             capture_output=True, text=True,
@@ -1193,7 +1194,7 @@ def test_relative_reference_citations_are_not_silent():
     is standing when it reads.
     """
     subprocess.run(
-        ["bash", "scripts/build.sh"],
+        [BASH, "scripts/build.sh"],
         cwd=REPO_ROOT, capture_output=True, text=True, check=True,
     )
 

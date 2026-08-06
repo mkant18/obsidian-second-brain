@@ -17,6 +17,7 @@ not diff prose - that would be noise - it pins the specific facts that drifted.
 """
 
 from __future__ import annotations
+from conftest import BASH
 
 import re
 import stat
@@ -47,7 +48,7 @@ def test_setup_preserves_the_env_file_mode(tmp_path):
     assert 'chmod 600 "$ENV_FILE"' in script, "no explicit chmod backstop after the mv"
 
     subprocess.run(
-        ["bash", "-c",
+        [BASH, "-c",
          '( umask 077; VAULT=/tmp/x awk \'{print}\' "$1" > "$1.tmp" ) '
          '&& mv "$1.tmp" "$1" && chmod 600 "$1"', "_", str(env)],
         check=True, capture_output=True,
