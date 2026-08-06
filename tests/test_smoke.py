@@ -9,7 +9,6 @@ any automated test). See FORK_INSIGHTS.md items #47/#48.
 """
 
 from __future__ import annotations
-from conftest import BASH
 
 import json
 import os
@@ -18,6 +17,7 @@ import sys
 from pathlib import Path
 
 import pytest
+from conftest import BASH
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 

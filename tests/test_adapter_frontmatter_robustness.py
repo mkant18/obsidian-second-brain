@@ -17,12 +17,12 @@ build exited 0 with a broken artifact.
 """
 
 from __future__ import annotations
-from conftest import BASH
 
 import subprocess
 from pathlib import Path
 
 import pytest
+from conftest import BASH
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 LIB = REPO_ROOT / "adapters" / "lib.sh"

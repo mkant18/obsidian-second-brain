@@ -8,13 +8,14 @@ binary, so nothing real is ever written.
 """
 
 from __future__ import annotations
-from conftest import BASH
 
 import json
 import os
 import subprocess
 import time
 from pathlib import Path
+
+from conftest import BASH
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 HOOK = REPO_ROOT / "hooks" / "obsidian-bg-agent.sh"

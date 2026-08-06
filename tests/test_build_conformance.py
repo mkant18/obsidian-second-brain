@@ -19,13 +19,13 @@ covered the day it lands rather than the day someone remembers to add a test.
 """
 
 from __future__ import annotations
-from conftest import BASH
 
 import re
 import subprocess
 from pathlib import Path
 
 import pytest
+from conftest import BASH
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DIST = REPO_ROOT / "dist"
