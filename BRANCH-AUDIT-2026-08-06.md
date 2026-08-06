@@ -1,8 +1,8 @@
-# Branch audit — 2026-08-06
+# Branch audit - 2026-08-06
 
 Snapshot of every remote branch, what was decided, and why.
 
-## Base branches — untouched
+## Base branches - untouched
 
 `main`, `pc`, `mac` are the working baselines and were explicitly excluded from
 this audit.
@@ -14,16 +14,16 @@ this audit.
 | `fixes/audit-backlog-2026-08-05` | 16 | 0 | #1 | `MERGEABLE` / `UNSTABLE` |
 | `hermes-memory-provider` | 1 | 227 | #2 | `MERGEABLE` / `CLEAN` |
 
-Nothing here was stale in the sense of "already merged" — both branches carry
+Nothing here was stale in the sense of "already merged" - both branches carry
 commits not reachable from `main`, so neither was deleted.
 
-### #1 — `fixes/audit-backlog-2026-08-05`
+### #1 - `fixes/audit-backlog-2026-08-05`
 
 16 commits ahead, **0 behind**. Merges clean; no rebase needed. The blocker is
 not the diff, it is CI:
 
-- Smoke tests (ubuntu-latest) — **pass**
-- Smoke tests (windows-latest) — **fail**
+- Smoke tests (ubuntu-latest) - **pass**
+- Smoke tests (windows-latest) - **fail**
 
 Since the branch's own subject is "Windows compat, MCP data-safety, and
 token-cost efficiency", a failing Windows smoke test is the one signal that
@@ -35,10 +35,10 @@ Recommended merge once green: **merge commit**, not squash. The 16 commits are
 individually scoped fixes across 49 files, and collapsing them loses the ability
 to bisect a specific fix later.
 
-### #2 — `hermes-memory-provider`
+### #2 - `hermes-memory-provider`
 
 1 commit ahead, 227 behind, from 2026-06-06. Reported `CLEAN` despite the age
-because the change is **purely additive** — three new files under a new
+because the change is **purely additive** - three new files under a new
 directory, 470 insertions, zero modifications to existing code:
 
 - `integrations/hermes-memory-provider/__init__.py`
@@ -63,5 +63,5 @@ git rev-list --count origin/<branch>..origin/main   # how far behind
 ```
 
 A branch that is far behind but 0 ahead is deletable. A branch that is far
-behind but ahead by even 1 commit is not — it holds work that exists nowhere
+behind but ahead by even 1 commit is not - it holds work that exists nowhere
 else.
