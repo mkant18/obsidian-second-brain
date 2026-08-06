@@ -95,6 +95,49 @@ def test_fuse_scores_by_best_chunk_too(vault, monkeypatch):
     assert fused[0]["path"] == "dossier.md"
 
 
+def test_semantic_only_hit_gets_a_snippet(vault, monkeypatch):
+    """A note ranked purely by the semantic arm must not surface with an empty
+    snippet - that used to force a follow-up obsidian_read_note call just to
+    see why the note matched at all (P1-3)."""
+    (vault / "lexical-match.md").write_text(
+        "---\ntype: note\n---\n\nbeacon appears right here in the body.\n",
+        encoding="utf-8",
+    )
+    (vault / "meaning-only.md").write_text(
+        "---\ntype: note\n---\n\nThis note never mentions that word at all - it "
+        "only matches by embedding similarity, so the lexical scorer never "
+        "touches it and never produces a snippet for it.\n",
+        encoding="utf-8",
+    )
+    index = {
+        "model": "fake", "format": 2,
+        "notes": {
+            "lexical-match.md": {"title": "lexical-match", "vecs": [[0.0, 1.0]]},
+            "meaning-only.md": {"title": "meaning-only", "vecs": [[1.0, 0.0]]},
+        },
+    }
+    (vault / vault_ops._SEMANTIC_INDEX_FILE).write_text(json.dumps(index), encoding="utf-8")
+    monkeypatch.setattr(vault_ops, "_embed_query", lambda q, **kw: [1.0, 0.0])
+    lexical = [
+        {"path": "lexical-match.md", "title": "lexical-match", "score": 9.0,
+         "snippet": "beacon appears right here in the body."},
+    ]
+    fused = vault_ops._semantic_fuse("beacon query", lexical, vault, 5, enabled=True)
+    assert fused is not None
+    by_path = {r["path"]: r for r in fused}
+    # meaning-only.md's path never appeared in the lexical results passed in
+    # above, so it is a genuinely semantic-only hit.
+    assert "meaning-only.md" not in {r["path"] for r in lexical}
+    snippet = by_path["meaning-only.md"]["snippet"]
+    assert snippet != ""
+    # Must be a usable snippet of the body, not just the mandatory YAML
+    # frontmatter every vault note opens with (that would still force a
+    # follow-up obsidian_read_note to see actual content).
+    assert "embedding similarity" in snippet
+    assert "type: note" not in snippet
+    assert by_path["lexical-match.md"]["snippet"] == "beacon appears right here in the body."
+
+
 def test_prepare_note_text_header_and_scaffolding():
     header, body = ss.prepare_note_text(
         "Atlas",

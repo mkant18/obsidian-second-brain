@@ -10,7 +10,7 @@ triggers_zh: ["添加一个任务", "记个待办", "跟踪这件事", "提醒�
 
 Use the obsidian-second-brain skill. Execute `/obsidian-task $ARGUMENTS`:
 
-1. Read `_CLAUDE.md` first if it exists in the vault root
+1. If the vault operating manual (`_CLAUDE.md`) is not already in your context, read it from the vault root
 2. Parse the task from the argument, or pull from recent conversation context if no argument given
 3. Infer: priority (🔴/🟡/🟢), due date, linked project, linked person
 4. Search for the right kanban board - use `_CLAUDE.md` board list or search the boards folder (resolved per `references/folder-map.md`)

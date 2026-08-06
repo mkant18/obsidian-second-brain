@@ -103,13 +103,17 @@ def obsidian_validate_note(path: str) -> str:
 
 
 @mcp.tool()
-def obsidian_backlinks(target: str) -> str:
+def obsidian_backlinks(target: str, limit: int = 50) -> str:
     """List every note that links to `target` via [[wikilink]].
 
     `target` is a note title/stem or vault-relative path. Use to understand how
     a note is referenced before editing or to navigate the knowledge graph.
+
+    limit: maximum number of backlinks to return (default 50, max 1000). The
+    response always includes the true 'count' of all backlinks found, plus a
+    'truncated' flag indicating whether there are more results than the limit.
     """
-    return json.dumps(vault_ops.backlinks(target))
+    return json.dumps(vault_ops.backlinks(target, limit=limit))
 
 
 @mcp.tool()

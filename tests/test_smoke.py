@@ -17,6 +17,7 @@ import sys
 from pathlib import Path
 
 import pytest
+from conftest import BASH
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
@@ -36,7 +37,7 @@ def test_codex_cli_build_generates_expected_files():
     Agent Skill per command (.agents/skills/<name>/SKILL.md). This guards the
     adapter pipeline that every command change depends on."""
     result = subprocess.run(
-        ["bash", "scripts/build.sh", "--platform", "codex-cli"],
+        [BASH, "scripts/build.sh", "--platform", "codex-cli"],
         cwd=REPO_ROOT,
         check=False,
         capture_output=True,
@@ -65,7 +66,7 @@ def test_hermes_build_generates_native_skills():
     skills/<category>/<name>/SKILL.md, with the required frontmatter Hermes
     needs to load it (name, description, version, author, license)."""
     result = subprocess.run(
-        ["bash", "scripts/build.sh", "--platform", "hermes"],
+        [BASH, "scripts/build.sh", "--platform", "hermes"],
         cwd=REPO_ROOT,
         check=False,
         capture_output=True,
@@ -141,7 +142,7 @@ def test_pi_build_generates_package():
     prompts/skills entries, prompt templates with frontmatter, and a discovery
     skill with valid Agent Skills frontmatter."""
     result = subprocess.run(
-        ["bash", "scripts/build.sh", "--platform", "pi"],
+        [BASH, "scripts/build.sh", "--platform", "pi"],
         cwd=REPO_ROOT,
         check=False,
         capture_output=True,
@@ -183,7 +184,7 @@ def test_agent_skills_build_generates_spec_compliant_tree():
     skills/<name>/SKILL.md per command plus the shared obsidian-core engine
     skill, with NO root SKILL.md (which would shadow the nested skills)."""
     result = subprocess.run(
-        ["bash", "scripts/build.sh", "--platform", "agent-skills"],
+        [BASH, "scripts/build.sh", "--platform", "agent-skills"],
         cwd=REPO_ROOT,
         check=False,
         capture_output=True,
@@ -858,6 +859,52 @@ def test_mcp_vault_ops_validate_and_backlinks_and_health(tmp_path, monkeypatch):
     assert any(b["link"] == "Ghost Note" for b in health["wanted_notes"]["sample"])
 
 
+def test_mcp_vault_ops_backlinks_respects_limit_and_truncated(tmp_path, monkeypatch):
+    """backlinks respects the limit parameter and returns truncated flag.
+
+    A note with more backlinks than the default/specified limit returns count
+    (the true total), len(backlinks)==limit, and truncated=true. Backlinks
+    are always sorted regardless of limit."""
+    vault_ops = _load_vault_ops()
+    vault = tmp_path / "vault"
+    vault.mkdir()
+    monkeypatch.setenv("OBSIDIAN_VAULT_PATH", str(vault))
+
+    # Create target note
+    (vault / "Target.md").write_text(
+        "---\ntype: note\ndate: 2026-06-27\ntags:\n  - x\nai-first: true\n---\n\n"
+        "## For future Claude\nThis is the target.\n",
+        encoding="utf-8",
+    )
+
+    # Create 60 notes that link to Target
+    for i in range(60):
+        (vault / f"Linker-{i:02d}.md").write_text(
+            "---\ntype: note\ndate: 2026-06-27\ntags:\n  - x\nai-first: true\n---\n\n"
+            "## For future Claude\nSee [[Target]].\n",
+            encoding="utf-8",
+        )
+
+    # Test default limit (50)
+    bl = vault_ops.backlinks("Target")
+    assert bl["count"] == 60, "count must be the true total"
+    assert len(bl["backlinks"]) == 50, "returned list must respect default limit"
+    assert bl["truncated"] is True, "truncated must be true when count > limit"
+    assert bl["backlinks"] == sorted(bl["backlinks"]), "backlinks must be sorted"
+
+    # Test custom limit
+    bl_custom = vault_ops.backlinks("Target", limit=20)
+    assert bl_custom["count"] == 60, "count must remain the true total"
+    assert len(bl_custom["backlinks"]) == 20, "returned list must respect custom limit"
+    assert bl_custom["truncated"] is True, "truncated must be true when count > limit"
+
+    # Test limit larger than count (no truncation)
+    bl_large = vault_ops.backlinks("Target", limit=100)
+    assert bl_large["count"] == 60, "count must be the true total"
+    assert len(bl_large["backlinks"]) == 60, "returned list must be complete"
+    assert bl_large["truncated"] is False, "truncated must be false when count <= limit"
+
+
 def test_mcp_vault_ops_skips_claude_dir(tmp_path, monkeypatch):
     """The MCP connector must not scan a vault-local .claude/ config dir as notes
     (issue #80). search and vault_health should ignore it entirely."""
@@ -962,17 +1009,17 @@ def test_update_vault_integration_script_guards():
     script = REPO_ROOT / "scripts/update-vault-integration.sh"
     assert script.is_file()
 
-    syntax = subprocess.run(["bash", "-n", str(script)], capture_output=True, text=True)
+    syntax = subprocess.run([BASH, "-n", str(script)], capture_output=True, text=True)
     assert syntax.returncode == 0, syntax.stderr
 
-    no_vault = subprocess.run(["bash", str(script)], capture_output=True, text=True)
+    no_vault = subprocess.run([BASH, str(script)], capture_output=True, text=True)
     assert no_vault.returncode != 0
     assert "--vault is required" in no_vault.stderr
 
     import tempfile
     with tempfile.TemporaryDirectory() as tmp:
         bogus = subprocess.run(
-            ["bash", str(script), "--vault", tmp, "--platform", "bogus"],
+            [BASH, str(script), "--vault", tmp, "--platform", "bogus"],
             capture_output=True, text=True,
         )
         assert bogus.returncode != 0
@@ -1062,7 +1109,7 @@ def test_validate_hook_flags_secrets(tmp_path):
 
     def run(f):
         return subprocess.run(
-            ["bash", str(hook)],
+            [BASH, str(hook)],
             input=json.dumps({"tool_input": {"file_path": str(f)}}),
             env=dict(os.environ, OBSIDIAN_VAULT_PATH=str(tmp_path)),
             capture_output=True, text=True,
@@ -1147,7 +1194,7 @@ def test_relative_reference_citations_are_not_silent():
     is standing when it reads.
     """
     subprocess.run(
-        ["bash", "scripts/build.sh"],
+        [BASH, "scripts/build.sh"],
         cwd=REPO_ROOT, capture_output=True, text=True, check=True,
     )
 

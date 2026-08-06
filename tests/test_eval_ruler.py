@@ -9,6 +9,7 @@ straightened ruler without needing Ollama.
 
 from __future__ import annotations
 
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -135,7 +136,35 @@ def test_generate_refuses_to_overwrite_baseline(tmp_path):
     cases = tmp_path / "cases.jsonl"
     cases.write_text('{"q": "old question", "gold": ["topic.md"]}\n', encoding="utf-8")
 
-    env = {"OBSIDIAN_VAULT_PATH": str(vault), "PATH": "/usr/bin:/bin"}
+    # Copy the real environment (not a hand-picked subset) so platform-required
+    # vars survive: Path.home() at vault_ops.py import time needs
+    # USERPROFILE/HOMEDRIVE/HOMEPATH on Windows (or HOME on POSIX) or the child
+    # crashes before main() ever runs.
+    env = os.environ.copy()
+    env["OBSIDIAN_VAULT_PATH"] = str(vault)
+    env["OBSIDIAN_ENV_FILE"] = str(tmp_path / "unused.env")
+    # Redirect "home" itself to an empty scratch dir rather than just relying on
+    # OBSIDIAN_ENV_FILE: scripts/research/lib/config.py (imported by
+    # retrieval_eval.py) hardcodes CONFIG_DIR = Path.home() / ".config" / ... and
+    # calls load_dotenv() on it at import time, ignoring OBSIDIAN_ENV_FILE
+    # entirely. Left pointed at the real home, a developer's actual
+    # ~/.config/obsidian-second-brain/.env would get loaded into this
+    # subprocess's environment: load_dotenv() defaults to override=False, but
+    # XAI_API_KEY is popped below, so an absent var would still get filled in
+    # from the file. Pointing Path.home() at a fresh, file-free directory makes
+    # that load_dotenv call a no-op on every platform, which is what actually
+    # keeps this deterministic and offline.
+    fake_home = tmp_path / "home"
+    fake_home.mkdir()
+    env["HOME"] = str(fake_home)
+    env["USERPROFILE"] = str(fake_home)
+    home_drive, home_path = os.path.splitdrive(str(fake_home))
+    env["HOMEDRIVE"] = home_drive
+    env["HOMEPATH"] = home_path or str(fake_home)
+    # Belt and suspenders: also strip these directly in case they leak in from
+    # some other source before the generate step reads them.
+    env.pop("XAI_API_KEY", None)
+    env.pop("RETRIEVAL_EVAL_EXTERNAL_CMD", None)
     cmd = [sys.executable, "scripts/eval/retrieval_eval.py",
            "--generate", "1", "--cases", str(cases)]
     result = subprocess.run(cmd, cwd=REPO_ROOT, capture_output=True, text=True,

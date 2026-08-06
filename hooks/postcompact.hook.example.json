@@ -32,7 +32,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/absolute/path/to/.claude/skills/obsidian-second-brain/hooks/obsidian-bg-agent.sh",
+            "command": "bash /absolute/path/to/.claude/skills/obsidian-second-brain/hooks/obsidian-bg-agent.sh",
             "timeout": 10,
             "async": true
           }

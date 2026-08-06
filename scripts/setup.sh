@@ -108,7 +108,7 @@ fi
 
 # ── add PostCompact hook ──────────────────────────────────────────────────────
 
-HOOK_CMD="$HOOK_SCRIPT"
+HOOK_CMD="bash $HOOK_SCRIPT"
 
 # Check if hook already exists
 EXISTING=$(jq -r '

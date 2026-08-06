@@ -172,6 +172,52 @@ def test_plugin_hooks_reference_shipped_executable_scripts():
     assert "OBSIDIAN_BG_AGENT_ENABLED" in bg
 
 
+def test_hook_shell_scripts_are_invoked_with_explicit_bash_prefix():
+    """P0-1: a hook `command` that invokes a `.sh` script bare relies on the
+    script's own `#!/usr/bin/env bash` shebang, and Windows process creation
+    never honors a shebang line - the hook silently no-ops there instead of
+    failing loudly. SKILL.md's validate-ai-first setup snippet already got
+    this right (`"command": "bash ~/.../validate-ai-first.sh"`); every other
+    place a `.sh` hook script is documented or shipped must match that
+    pattern so a Windows install actually runs the hook."""
+    # 1. hooks/hooks.json - the wiring a plugin install uses directly.
+    hooks = _load("hooks/hooks.json")["hooks"]
+    for event, groups in hooks.items():
+        for group in groups:
+            for hook in group["hooks"]:
+                command = hook["command"]
+                if ".sh" in command:
+                    assert command.startswith("bash "), (
+                        f"{event} hook must invoke its .sh script via bash: {command!r}"
+                    )
+
+    # 2. hooks/postcompact.hook.example.json - the paste-in template for a
+    # manual (non-setup.sh) install.
+    example = (REPO_ROOT / "hooks/postcompact.hook.example.json").read_text(encoding="utf-8")
+    m = re.search(r'"command":\s*"([^"]*obsidian-bg-agent\.sh)"', example)
+    assert m, "postcompact.hook.example.json is missing its obsidian-bg-agent.sh command"
+    assert m.group(1).startswith("bash "), (
+        f"postcompact.hook.example.json command missing bash prefix: {m.group(1)!r}"
+    )
+
+    # 3. SKILL.md's own bg-agent JSON snippet (the manual-setup doc).
+    skill = (REPO_ROOT / "SKILL.md").read_text(encoding="utf-8")
+    m = re.search(r'"command":\s*"([^"]*obsidian-bg-agent\.sh)"', skill)
+    assert m, "SKILL.md is missing its obsidian-bg-agent.sh command snippet"
+    assert m.group(1).startswith("bash "), (
+        f"SKILL.md bg-agent snippet missing bash prefix: {m.group(1)!r}"
+    )
+
+    # 4. scripts/setup.sh - the default installer registers the PostCompact
+    # hook programmatically rather than from a JSON template.
+    setup = (REPO_ROOT / "scripts/setup.sh").read_text(encoding="utf-8")
+    m = re.search(r'HOOK_CMD="([^"]*)"', setup)
+    assert m, "scripts/setup.sh is missing its HOOK_CMD assignment"
+    assert m.group(1).startswith("bash "), (
+        f"scripts/setup.sh HOOK_CMD missing bash prefix: {m.group(1)!r}"
+    )
+
+
 def test_plugin_commands_cover_all_command_files():
     plugin = _load(".claude-plugin/plugin.json")
     commands_dir = REPO_ROOT / plugin["commands"]

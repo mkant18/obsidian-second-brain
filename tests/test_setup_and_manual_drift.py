@@ -23,6 +23,8 @@ import stat
 import subprocess
 from pathlib import Path
 
+from conftest import BASH
+
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SKILL = REPO_ROOT / "SKILL.md"
 COMMANDS = REPO_ROOT / "commands"
@@ -47,7 +49,7 @@ def test_setup_preserves_the_env_file_mode(tmp_path):
     assert 'chmod 600 "$ENV_FILE"' in script, "no explicit chmod backstop after the mv"
 
     subprocess.run(
-        ["bash", "-c",
+        [BASH, "-c",
          '( umask 077; VAULT=/tmp/x awk \'{print}\' "$1" > "$1.tmp" ) '
          '&& mv "$1.tmp" "$1" && chmod 600 "$1"', "_", str(env)],
         check=True, capture_output=True,
@@ -115,4 +117,49 @@ def test_skill_md_command_count_matches_reality():
     wrong = {c for c in claimed if c not in (actual, actual - 1)}  # -1 excludes calendar
     assert not wrong, (
         f"SKILL.md claims {sorted(wrong)} commands; commands/ holds {actual}"
+    )
+
+
+# --- P1-1: commands must not unconditionally re-read a manual the -----------
+# --- SessionStart hook already injected -------------------------------------
+
+def test_commands_read_the_manual_conditionally_not_unconditionally():
+    """P1-1: hooks/load_vault_context.py injects the full _CLAUDE.md manual at
+    SessionStart with an explicit comment that it is loaded once and should
+    not be re-read on each command. Every command file that opens with a step
+    to read `_CLAUDE.md` must phrase it as conditional on the manual not
+    already being in context - otherwise every slash-command invocation on
+    Claude Code burns tokens re-reading a file the hook already injected.
+
+    The step itself must stay (not be deleted): this same command source
+    compiles via adapters/ to platforms with no SessionStart hook, which
+    still need the unconditional-equivalent fallback - phrased conditionally,
+    it degrades correctly there too ("not already in context" is simply
+    always true on first read).
+    """
+    offenders = []
+    for md in sorted(COMMANDS.glob("*.md")):
+        text = md.read_text(encoding="utf-8")
+        for m in re.finditer(r"[Rr]ead `?_CLAUDE\.md`? first\b[^\n]*", text):
+            offenders.append(f"{md.name}: {m.group(0).strip()[:100]}")
+    assert not offenders, (
+        "unconditional 'read _CLAUDE.md first' step(s) found - reword to be "
+        "conditional on the manual not already being in context, per the "
+        "SessionStart hook's 'do not re-read on each command' contract:\n  "
+        + "\n  ".join(offenders)
+    )
+
+
+def test_at_least_the_known_command_set_uses_the_conditional_phrasing():
+    """Guards against the fix regressing to a no-op (e.g. the regex above
+    silently matching nothing). Pins a floor on how many command files
+    actually carry the conditional read-the-manual step.
+    """
+    hits = [
+        f.name for f in sorted(COMMANDS.glob("*.md"))
+        if "is not already in your context" in f.read_text(encoding="utf-8")
+    ]
+    assert len(hits) >= 30, (
+        f"expected at least 30 command files with the conditional manual-read "
+        f"phrasing, found {len(hits)}: {hits}"
     )

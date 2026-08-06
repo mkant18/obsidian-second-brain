@@ -11,7 +11,7 @@ Use the obsidian-second-brain skill. Execute `/obsidian-challenge $ARGUMENTS`:
 
 The optional argument is the idea, belief, or plan to challenge. If not provided, infer the user's current position from conversation context.
 
-1. Read `_CLAUDE.md` first if it exists in the vault root
+1. If the vault operating manual (`_CLAUDE.md`) is not already in your context, read it from the vault root
 2. Identify the user's current claim, plan, or assumption - either from the argument or from recent conversation
 3. Extract the key premises behind that position
 4. Search the vault for counter-evidence - spawn parallel subagents:

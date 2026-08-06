@@ -4,6 +4,8 @@ on:
   push:
     branches: [main]
   pull_request:
+  # Manual trigger: event-driven dispatch is not creating runs on this repo.
+  workflow_dispatch:
 
 # Least-privilege: this workflow only reads the repo to run tests.
 permissions:
@@ -11,8 +13,16 @@ permissions:
 
 jobs:
   smoke:
-    name: Smoke tests
-    runs-on: ubuntu-latest
+    name: Smoke tests (${{ matrix.os }})
+    # Windows never ran here before (P0-2): the whole job was pinned to
+    # ubuntu-latest, so Windows-only breakage in the Python test suite was
+    # structurally invisible. fail-fast is off so a red Windows leg never
+    # cancels the ubuntu leg's signal.
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
@@ -27,40 +37,107 @@ jobs:
       # CLAUDE.md declares ruff as the Python standard but nothing ran it.
       # The gated set is pinned in pyproject [tool.ruff.lint]; see the comment
       # there for what is deliberately excluded and why.
+      # ubuntu-only: not part of this item's ask (pytest below is) and not
+      # verified portable.
       - name: Lint Python
+        if: matrix.os == 'ubuntu-latest'
         run: ruff check .
       - name: Run smoke tests
+        if: matrix.os == 'ubuntu-latest'
         run: pytest -q
+      # Windows deselects: these fail today for pre-existing reasons unrelated
+      # to P1-6/P1-7 (mainly MSYS bash mangling a backslash-separated absolute
+      # path passed as its own argv, a couple of HOME- vs USERPROFILE-only
+      # env redirects, and one macOS-only filesystem-normalization case) and
+      # are real, separate bugs in the tests/tooling - fixing them is out of
+      # scope for P0-2, which only asks to make Windows breakage visible.
+      # This list is the tracking mechanism: deleting a line means that test
+      # is expected to pass on Windows, so a regression in it fails the build
+      # like any other. No count is quoted here on purpose, mirroring the
+      # E501 comment in pyproject.toml - the last stated count drifted
+      # unnoticed. Regenerate this list from a real, unscoped Windows run
+      # (not this step's own scoped command, which will not show them):
+      #   uv run pytest -q
+      # and copy the FAILED node IDs from the summary at the bottom. A line
+      # comes out only when that test actually passes on Windows - no other
+      # reason. These failures are not tracked in an in-repo backlog file;
+      # the P0-x/P1-x IDs referenced above live in an external audit list,
+      # so this deselect list is the only record of what is still broken.
+      - name: Run smoke tests
+        if: matrix.os == 'windows-latest'
+        run: >-
+          pytest -q
+          --deselect 'tests/test_bg_agent_hook.py::test_full_chain_spawns_agent_with_summary'
+          --deselect 'tests/test_bg_agent_hook.py::test_run_log_records_starting_and_completed'
+          --deselect 'tests/test_bg_agent_hook.py::test_early_exit_is_logged_not_silent'
+          --deselect 'tests/test_bg_agent_hook.py::test_project_hints_injected_only_when_opted_in'
+          --deselect 'tests/test_bg_agent_hook.py::test_launch_uses_strict_mcp_config'
+          --deselect 'tests/test_setup_and_manual_drift.py::test_setup_preserves_the_env_file_mode'
+          --deselect 'tests/test_smoke.py::test_link_graph_resolves_unicode_composition'
+          --deselect 'tests/test_smoke.py::test_research_key_in_config_env_selects_paid_mode[scripts.research.research-run_paid-run_free]'
+          --deselect 'tests/test_smoke.py::test_research_key_in_config_env_selects_paid_mode[scripts.research.research_deep-run_paid_deep-run_free_deep]'
+          --deselect 'tests/test_smoke.py::test_retrieval_eval_external_mode'
+          --deselect 'tests/test_smoke.py::test_validate_hook_flags_secrets'
       # Fail the build if a banned substitution character (em-dash, curly quote,
       # Unicode math, ...) appears in prose in any tracked source file. Characters
       # inside code fences / backtick spans are preserved and never fail.
+      # ubuntu-only: not part of this item's ask.
       - name: Lint substitution characters
+        if: matrix.os == 'ubuntu-latest'
         run: python scripts/sweep_non_ascii.py --check
+
+      # live_test.py drives the Obsidian MCP connector (integrations/obsidian-mcp-server)
+      # end-to-end over real stdio, through the same launch command every real
+      # client uses (README.md: `uv run --with 'mcp<2' python server.py`) - not a
+      # pytest module, so it does not touch the Windows --deselect list above.
+      # Runs against a fresh temp vault created in this step, never a real one:
+      # --save is safe here only because the vault is thrown away after the job.
+      # ubuntu-only: untested Windows uv-spawn-by-bare-name behavior under pwsh
+      # quoting, matching every other non-portable step in this job.
+      - name: Install uv
+        if: matrix.os == 'ubuntu-latest'
+        run: python -m pip install --upgrade uv
+      - name: Live MCP round-trip test (Obsidian connector)
+        if: matrix.os == 'ubuntu-latest'
+        working-directory: integrations/obsidian-mcp-server
+        run: |
+          VAULT="$(mktemp -d)/live-test-vault"
+          mkdir -p "$VAULT/Inbox"
+          export OBSIDIAN_VAULT_PATH="$VAULT"
+          uv run --with 'mcp<2' python live_test.py --save "live test"
       # The README publishes a per-platform conformance board. Fail if it no
       # longer matches a real build, so the published table cannot go stale and
       # a regression on a platform the maintainer does not personally use
       # cannot pass unnoticed. Regenerate with:
       #   uv run python scripts/conformance_report.py --write
+      # ubuntu-only: not part of this item's ask.
       - name: Verify the conformance board is current
+        if: matrix.os == 'ubuntu-latest'
         run: python scripts/conformance_report.py --check
 
       # docs/ is generated from commands/, so a command whose description or
       # triggers changed without a site rebuild would ship a page that
       # contradicts the command it documents. Regenerate with:
       #   uv run python scripts/build_site.py
+      # ubuntu-only: not part of this item's ask.
       - name: Verify the docs site is current
+        if: matrix.os == 'ubuntu-latest'
         run: python scripts/build_site.py --check
 
       # The Obsidian plugin is a second implementation of AI-FIRST.md, in a
       # second language, so it needs its own gate. A linter's failure mode is
       # false positives, and most of these tests are about not firing.
+      # ubuntu-only: this is the expensive/non-portable leg the item allows
+      # to stay off the Windows matrix.
       - uses: actions/setup-node@v7
+        if: matrix.os == 'ubuntu-latest'
         with:
           node-version: '20'
           cache: npm
           cache-dependency-path: integrations/obsidian-plugin/package-lock.json
 
       - name: Obsidian plugin - typecheck, build and test
+        if: matrix.os == 'ubuntu-latest'
         working-directory: integrations/obsidian-plugin
         run: |
           npm ci --no-audit --no-fund

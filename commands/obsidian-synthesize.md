@@ -11,7 +11,7 @@ Use the obsidian-second-brain skill. Execute `/obsidian-synthesize`:
 
 This command can run manually or as a scheduled agent. It thinks for you.
 
-1. Read `_CLAUDE.md` first if it exists in the vault root
+1. If the vault operating manual (`_CLAUDE.md`) is not already in your context, read it from the vault root
 2. Read `index.md` to understand all existing pages
 3. Read recent operation log: if `Logs/` exists, read the last 2-3 `Logs/YYYY-MM-DD.md` files; otherwise read `log.md` (last 20 entries)
 

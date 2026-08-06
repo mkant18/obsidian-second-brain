@@ -123,6 +123,10 @@ _LOG_FOLDERS = {"logs", "daily", "dev logs"}
 _STALE_STATUSES = {"superseded", "declined", "rejected", "archived", "obsolete",
                    "cancelled", "closed", "parked", "inactive", "done"}
 _STATUS_RE = re.compile(r"(?m)^status:\s*['\"]?([A-Za-z0-9_-]+)")
+# Keys update_note is allowed to set/replace in frontmatter. Anything else (or
+# a value containing a newline) is rejected before _apply_fields ever runs -
+# see update_note.
+_FIELD_KEY_RE = re.compile(r"^[A-Za-z0-9_-]+$")
 # The supersedes REVERSE edge (fork-insights round 2, the local-first memory
 # fork): when ADR A declares `supersedes: "[[B]]"`, B should fade even if B's
 # own status was never updated - the exact "vault forgot to update the old
@@ -574,9 +578,47 @@ def _semantic_fuse(
         out = fused[:limit]
         for r in out:
             r.pop("score", None)
+            if not r["snippet"]:
+                # Semantic-only hit: the lexical arm never scored this note (it
+                # matched no query term at all), so there is nothing in `snippet`
+                # to reuse. Without this, a note ranked purely by meaning surfaced
+                # with an empty snippet, forcing a follow-up obsidian_read_note
+                # call just to see why it matched (P1-3). Guarded per-result so a
+                # single unreadable file only costs that one snippet, not the
+                # whole fused ranking (the outer except would otherwise fall back
+                # to pure lexical for every result over one bad path).
+                try:
+                    r["snippet"] = _semantic_only_snippet(vault, r["path"], query)
+                except Exception:
+                    pass
         return out
     except Exception:
         return None  # any failure -> pure lexical, never break search
+
+
+def _semantic_only_snippet(vault: Path, rel_path: str, query: str) -> str:
+    """Snippet for a hit the semantic arm found but the lexical arm did not.
+
+    The index stores per-chunk vectors only (see embed_note_chunks in
+    scripts/eval/semantic_search.py) - no chunk text or offsets are persisted,
+    so there is nothing to slice around the best-matching chunk without
+    re-embedding. Read the note fresh instead and reuse the same term-anchored
+    window _snippet already builds for lexical hits; if none of the query terms
+    appear in the body (a pure meaning match with no literal overlap), _snippet
+    falls back to the first _SNIPPET_CHARS characters - of the body, not the raw
+    file, since every vault note opens with a mandatory YAML frontmatter block
+    (references/ai-first-rules.md) and a snippet that is just `type: ...` /
+    `tags: ...` lines would still force the exact follow-up read this exists to
+    avoid. Either way this is still a real snippet instead of the empty string
+    that used to force a follow-up obsidian_read_note call."""
+    target = _resolve_in_vault(vault, rel_path)
+    if target is None:
+        return ""
+    text = _read_safe(target, limit=_MAX_FILE_BYTES)
+    if not text:
+        return ""
+    _, body, _ = _split_frontmatter(text)
+    return _snippet(body or text, _query_terms(query))
 
 
 def search(query: str, *, limit: int = 6, semantic: Optional[bool] = None) -> List[Dict[str, Any]]:
@@ -682,6 +724,9 @@ def read_note(rel: str) -> Dict[str, Any]:
     return {"path": rel, "content": text[:_READ_CAP]}
 
 
+_NOTE_TYPE_RE = re.compile(r"^[A-Za-z0-9_-]+$")
+
+
 def save_note(
     title: str,
     content: str,
@@ -696,7 +741,16 @@ def save_note(
     if not title or not content:
         return {"error": "title and content are required"}
     note_type = (note_type or "note").strip() or "note"
+    # P1-4: note_type and tags are interpolated straight into YAML frontmatter
+    # below. A newline (or a leading '-'/':') would inject arbitrary frontmatter
+    # lines - e.g. spoofing `source: mcp` or forging fields with retrieval
+    # semantics. Reject rather than silently sanitize, so the caller finds out.
+    if not _NOTE_TYPE_RE.match(note_type):
+        return {"error": f"invalid note_type: {note_type!r} (must match ^[A-Za-z0-9_-]+$)"}
     tags = [str(t) for t in (tags or [note_type])]
+    for t in tags:
+        if "\n" in t or "\r" in t or t.startswith("-") or t.startswith(":"):
+            return {"error": f"invalid tag: {t!r} (no newlines, no leading '-' or ':')"}
 
     inbox = vault / _NOTES_DIR
     inbox.mkdir(parents=True, exist_ok=True)
@@ -763,15 +817,50 @@ def update_note(
         return {"error": "path is outside the vault"}
     if {p.lower() for p in target.relative_to(vault).parts} & _PROTECTED_WRITE_DIRS:
         return {"error": "path is in a protected directory"}
-    text = _read_safe(target)
-    if text is None:
+    try:
+        if not target.is_file():
+            return {"error": f"not found: {rel} (update_note only edits existing notes)"}
+        raw = target.read_bytes()
+    except OSError:
         return {"error": f"not found: {rel} (update_note only edits existing notes)"}
+    # Strict decode, not _read_safe: _read_safe uses errors="replace", which would
+    # turn every non-UTF-8 byte into U+FFFD and then _write_atomic would burn that
+    # loss into the file permanently on this read-edit-write path. Read-only tools
+    # (read_note, search, backlinks, vault_health) stay forgiving on purpose; this
+    # is the one path that must refuse instead of silently corrupting the note.
+    try:
+        # utf-8-sig, matching _read_safe: strips a leading BOM (Windows editors and
+        # several sync tools emit one) instead of leaving it glued to the rebuilt
+        # frontmatter block below, which would otherwise stop `_split_frontmatter`
+        # from recognizing "---" and duplicate the frontmatter on write-back.
+        # errors defaults to "strict", so a genuinely non-UTF-8 byte still raises.
+        text = raw.decode("utf-8-sig")
+    except UnicodeDecodeError as exc:
+        return {
+            "error": (
+                f"{rel} is not valid UTF-8 ({exc}); refusing to edit it to avoid "
+                "corrupting non-UTF-8 content on write-back"
+            )
+        }
     if not append and not set_fields:
         return {"error": "nothing to update: provide append and/or set_fields"}
 
     fm_lines, body, _ = _split_frontmatter(text)
     fields = {str(k): str(v) for k, v in (set_fields or {}).items()}
     fields.setdefault("updated", datetime.now().strftime("%Y-%m-%d"))
+    # _apply_fields does a line-level splice: a key that fails
+    # ^[A-Za-z0-9_-]+$ could break the `key:` line regex it matches against,
+    # and a newline embedded in a value would turn one frontmatter line into
+    # two - smuggling an attacker-chosen second key (e.g. `status: archived`)
+    # into the frontmatter block without going through this function's own
+    # `fields` dict, which is what the stale-status disclosure below checks.
+    # Reject both up front instead of writing a value that could corrupt the
+    # YAML or bypass that check.
+    for key, value in fields.items():
+        if not _FIELD_KEY_RE.match(key):
+            return {"error": f"invalid frontmatter key {key!r}: must match ^[A-Za-z0-9_-]+$"}
+        if "\n" in value or "\r" in value:
+            return {"error": f"frontmatter value for {key!r} contains a newline; refusing to write it"}
     fm_lines = _apply_fields(fm_lines, fields)
 
     new_body = body
@@ -834,18 +923,23 @@ def validate_note(rel: str) -> Dict[str, Any]:
     return {"path": rel, "ok": not issues, "issues": issues}
 
 
-def backlinks(target: str) -> Dict[str, Any]:
+def backlinks(target: str, *, limit: int = 50) -> Dict[str, Any]:
     """Find every note that links to `target` via [[wikilink]].
 
     `target` may be a note title/stem or a vault-relative path; both resolve to
     the note's stem for matching (aliases `[[Note|alias]]` and folder-qualified
     links `[[folder/Note]]` are handled).
+
+    limit: maximum number of backlinks to return (capped at 1000). The 'count'
+    field always reflects the true total number of backlinks found; truncated
+    indicates whether there are more results than the limit.
     """
     vault = resolve_vault()
     key = (target or "").strip()
     if not key:
         return {"error": "target is required"}
     stem = _norm_link(Path(key).name if "/" in key or key.endswith(".md") else key)
+    limit = max(1, min(int(limit), 1000))
     refs: List[str] = []
     for i, md in enumerate(_iter_notes(vault)):
         if i >= _MAX_FILES_SCANNED:
@@ -855,7 +949,14 @@ def backlinks(target: str) -> Dict[str, Any]:
             rel = str(md.relative_to(vault))
             if md.stem.lower() != stem:  # don't list the note itself
                 refs.append(rel)
-    return {"target": stem, "count": len(refs), "backlinks": sorted(refs)}
+    total = len(refs)
+    sorted_refs = sorted(refs)
+    return {
+        "target": stem,
+        "count": total,
+        "backlinks": sorted_refs[:limit],
+        "truncated": total > limit,
+    }
 
 
 def vault_health() -> Dict[str, Any]:
@@ -1062,6 +1163,15 @@ def _write_atomic(path: Path, text: str) -> None:
             Path(tmp).chmod(keep_mode)
         Path(tmp).replace(path)
     except BaseException:
+        # The chmod above may have copied a read-only mode onto the temp file.
+        # On POSIX that doesn't block unlink (deletion is a directory
+        # permission, not a file one), but on Windows a read-only attribute
+        # blocks deleting the file itself, which would otherwise leave this
+        # temp file behind on every failed write to a read-only target.
+        try:
+            Path(tmp).chmod(0o600)
+        except OSError:
+            pass
         try:
             Path(tmp).unlink()
         except OSError:
@@ -1150,15 +1260,39 @@ def _split_frontmatter(text: str):
     return [], text, False
 
 
+_BLOCK_SCALAR_RE = re.compile(r":\s*[|>][0-9+-]*\s*$")
+
+
 def _apply_fields(fm_lines: List[str], fields: Dict[str, str]) -> List[str]:
-    """Set/replace scalar frontmatter keys, preserving every other line as-is."""
+    """Set/replace scalar frontmatter keys, preserving every other line as-is.
+
+    Callers must have already rejected keys and values that would make the
+    line-level splice below unsafe (see update_note): invalid key characters
+    and newlines embedded in a value. This function additionally handles the
+    one other way a single-line replace can corrupt YAML: if the key being
+    replaced currently holds a block scalar (`key: |` / `key: >`, optionally
+    with a chomping/indent indicator like `|-` or `>2`), the lines below it
+    up to the next non-blank, non-indented line are its continuation and
+    belong to it. Replacing only the header line would leave those orphaned
+    as invalid top-level YAML, so they are dropped along with it.
+    """
     lines = list(fm_lines)
     remaining = dict(fields)
-    for i, line in enumerate(lines):
+    out: List[str] = []
+    i = 0
+    while i < len(lines):
+        line = lines[i]
         m = re.match(r"^([A-Za-z0-9_-]+):", line)
         if m and m.group(1) in remaining:
             key = m.group(1)
-            lines[i] = f"{key}: {remaining.pop(key)}"
+            out.append(f"{key}: {remaining.pop(key)}")
+            i += 1
+            if _BLOCK_SCALAR_RE.search(line):
+                while i < len(lines) and (lines[i].strip() == "" or lines[i][:1] in (" ", "\t")):
+                    i += 1
+            continue
+        out.append(line)
+        i += 1
     for k, v in remaining.items():
-        lines.append(f"{k}: {v}")
-    return lines
+        out.append(f"{k}: {v}")
+    return out

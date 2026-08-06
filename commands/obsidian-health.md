@@ -9,7 +9,7 @@ triggers_zh: ["检查知识库健康状况", "给我的知识库做体检", "审
 
 Use the obsidian-second-brain skill. Execute `/obsidian-health`:
 
-1. Read `_CLAUDE.md` first to find the vault path
+1. If the vault operating manual (`_CLAUDE.md`) is not already in your context, read it from the vault root to find the vault path
 2. Run the health scan from the skill root (its absolute path was given at session start as **Skill root**; substitute it for `SKILL_ROOT`): `uv run --directory "SKILL_ROOT" scripts/vault_health.py --path ~/path/to/vault --json`
    (replace vault path with the one from `_CLAUDE.md`)
    - **Large or noisy vault?** If the scan surfaces thousands of findings from directories the user does not maintain by hand (atomic-card pools, backup snapshots, imported dumps), do NOT hardcode fixes. Offer to write a `<vault>/.vault-config.json` that extends the exclude list: `{"exclude-dirs": ["_card-pool"], "exclude-paths": ["Archive/Backup"]}`. `exclude-dirs` matches directory names anywhere in the tree; `exclude-paths` matches vault-relative path prefixes. Both are additive - the built-in excludes always apply - and a missing or malformed file is ignored silently. Re-run the scan afterward.

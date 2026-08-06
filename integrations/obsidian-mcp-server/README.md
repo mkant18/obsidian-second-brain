@@ -6,7 +6,7 @@ This is the connector half of [Issue #60](https://github.com/eugeniughelbur/obsi
 
 ## Status
 
-v0, live-tested at the protocol level. The vault logic (`vault_ops.py`) is pure stdlib and unit-tested, and the full MCP round-trip (a real client connecting over stdio, discovering tools, and calling search / read / save) passes via `live_test.py`. The one thing not yet done is driving it from an actual Hermes instance - see "Testing" below.
+v0, live-tested at the protocol level. The vault logic (`vault_ops.py`) is pure stdlib and unit-tested, and the full MCP round-trip (a real client connecting over stdio, discovering tools, and calling all ten of them) passes via `live_test.py`, wired into CI against a throwaway vault. The one thing not yet done is driving it from an actual Hermes instance - see "Testing" below.
 
 ## Tools exposed
 
@@ -68,19 +68,21 @@ For Hermes specifically, add the server to its MCP config; Hermes picks the tool
 
 ## Testing
 
-`vault_ops.py` is covered by a standalone harness (search / read / save / path-guard) - no `mcp` install needed. `live_test.py` runs the full MCP round-trip with a real client:
+`vault_ops.py` is covered by a standalone harness (search / read / save / path-guard) - no `mcp` install needed. `live_test.py` runs the full MCP round-trip with a real client, launched the same way every real client launches the server (`uv run --with 'mcp<2' python server.py`):
 
 ```bash
-# read-only (safe against a real vault)
+# read-only (safe against a real vault): exercises the seven tools that never write
 OBSIDIAN_VAULT_PATH=/path/to/vault uv run --with 'mcp<2' python live_test.py "your query"
-# also write one test note to Inbox/
+# also exercises the three write tools (save_note, capture, update_note) against Inbox/
 OBSIDIAN_VAULT_PATH=/path/to/vault uv run --with 'mcp<2' python live_test.py --save "your query"
 ```
 
+CI runs `live_test.py --save` on every push/PR against a throwaway vault created in the job (see `.github/workflows/ci.yml`), so this is exercised continuously, not just by hand.
+
 Live-test checklist:
   - [x] Server starts and an MCP client completes the handshake.
-  - [x] Client lists the three tools.
-  - [x] Client calls `obsidian_search` (results), `obsidian_read_note` (content), `obsidian_save_note` (writes a valid AI-first note to `Inbox/`). Verified 2026-06-06 via `live_test.py` against both a throwaway vault and a real vault (read-only).
+  - [x] Client lists all ten tools.
+  - [x] Client calls every tool: `obsidian_search`, `obsidian_read_note`, `obsidian_save_note`, `obsidian_capture`, `obsidian_update_note` (including a `set_fields` merge), `obsidian_validate_note`, `obsidian_backlinks`, `obsidian_vault_health`, `obsidian_list_skills`, `obsidian_get_skill`. Verified 2026-08-05 via `live_test.py --save` against a throwaway vault, and runs on every CI push against a fresh throwaway vault created in the job.
   - [ ] Connect from a real Hermes instance and confirm the tools appear via `discover_mcp_tools()`.
 
 ## Notes

@@ -12,7 +12,7 @@ Use the obsidian-second-brain skill. Execute `/obsidian-person $ARGUMENTS`:
 
 The argument is a person's name - handle typos and partial matches.
 
-1. Read `_CLAUDE.md` first if it exists in the vault root
+1. If the vault operating manual (`_CLAUDE.md`) is not already in your context, read it from the vault root
 2. Search the vault for an existing note matching the name (fuzzy - handle typos and partial names)
 3. If found: confirm with user, then update with new info from conversation
 4. If not found: create `Full Name.md` in the entities folder (resolved per `references/folder-map.md` - wiki-style `wiki/entities/`, Obsidian-style `People/`) with full frontmatter schema
