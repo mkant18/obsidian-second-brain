@@ -578,9 +578,37 @@ def _semantic_fuse(
         out = fused[:limit]
         for r in out:
             r.pop("score", None)
+            if not r["snippet"]:
+                # Semantic-only hit: the lexical arm never scored this note (it
+                # matched no query term at all), so there is nothing in `snippet`
+                # to reuse. Without this, a note ranked purely by meaning surfaced
+                # with an empty snippet, forcing a follow-up obsidian_read_note
+                # call just to see why it matched (P1-3).
+                r["snippet"] = _semantic_only_snippet(vault, r["path"], query)
         return out
     except Exception:
         return None  # any failure -> pure lexical, never break search
+
+
+def _semantic_only_snippet(vault: Path, rel_path: str, query: str) -> str:
+    """Snippet for a hit the semantic arm found but the lexical arm did not.
+
+    The index stores per-chunk vectors only (see embed_note_chunks in
+    scripts/eval/semantic_search.py) - no chunk text or offsets are persisted,
+    so there is nothing to slice around the best-matching chunk without
+    re-embedding. Read the note fresh instead and reuse the same term-anchored
+    window _snippet already builds for lexical hits; if none of the query terms
+    appear in the body (a pure meaning match with no literal overlap), _snippet
+    falls back to the note's first _SNIPPET_CHARS characters, which is still a
+    real snippet instead of the empty string that used to force a follow-up
+    obsidian_read_note call."""
+    target = _resolve_in_vault(vault, rel_path)
+    if target is None:
+        return ""
+    text = _read_safe(target, limit=_MAX_FILE_BYTES)
+    if not text:
+        return ""
+    return _snippet(text, _query_terms(query))
 
 
 def search(query: str, *, limit: int = 6, semantic: Optional[bool] = None) -> List[Dict[str, Any]]:
