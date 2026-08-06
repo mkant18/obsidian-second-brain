@@ -1,0 +1,16 @@
+#!/bin/bash
+# Branch guard: refuse pushes to any ref outside this machine's lane.
+#
+# main is protected on GitHub (PR-only), but protection does not stop a push
+# to the OTHER machine's branch — which is how the two machines raced each
+# other in the first place. This does.
+MACHINE_BRANCH="__MACHINE_BRANCH__"
+
+while read local_ref local_sha remote_ref remote_sha; do
+  branch="${remote_ref#refs/heads/}"
+  if [[ "$branch" != "$MACHINE_BRANCH" && "$branch" != "$MACHINE_BRANCH"-* ]]; then
+    echo "BLOCKED: this machine's convention only allows pushing to '$MACHINE_BRANCH' or '$MACHINE_BRANCH-*' on origin." >&2
+    echo "Attempted to push to: '$branch'." >&2
+    exit 1
+  fi
+done

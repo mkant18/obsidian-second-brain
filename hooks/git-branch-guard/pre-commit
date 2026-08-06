@@ -1,0 +1,15 @@
+#!/bin/bash
+# Branch guard: refuse commits outside this machine's lane.
+#
+# Installed per-machine by install.sh, which substitutes MACHINE_BRANCH.
+# Topic branches use a HYPHEN, not a slash: git stores refs/heads/mac as a
+# file, so refs/heads/mac/<topic> cannot be created while it exists
+# ("cannot lock ref 'refs/heads/mac/x': 'refs/heads/mac' exists").
+MACHINE_BRANCH="__MACHINE_BRANCH__"
+
+branch=$(git symbolic-ref --short HEAD 2>/dev/null)
+if [[ "$branch" != "$MACHINE_BRANCH" && "$branch" != "$MACHINE_BRANCH"-* ]]; then
+  echo "BLOCKED: this machine's convention only allows commits on '$MACHINE_BRANCH' or '$MACHINE_BRANCH-*' branches." >&2
+  echo "Current branch: '$branch'. Run: git checkout $MACHINE_BRANCH  (or a topic branch cut from it, e.g. $MACHINE_BRANCH-some-fix)." >&2
+  exit 1
+fi
