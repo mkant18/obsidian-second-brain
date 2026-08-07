@@ -18,7 +18,7 @@ from pathlib import Path
 # clone that install.sh sets up), not the repo clone path, so it stays valid if the repo
 # lives elsewhere. The hook resolves its own real path at runtime, so this is enough.
 HOOK_PATH = Path.home() / ".claude" / "skills" / "obsidian-second-brain" / "hooks" / "load_vault_context.py"
-HOOK_CMD = f"python3 {HOOK_PATH}"
+HOOK_CMD = f'python3 "{HOOK_PATH}"'
 
 
 def register(settings: dict) -> tuple[dict, str]:
