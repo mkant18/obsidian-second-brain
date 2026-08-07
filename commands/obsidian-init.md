@@ -45,7 +45,7 @@ Use the obsidian-second-brain skill. Execute `/obsidian-init`:
 
 If `_CLAUDE.md` already exists: show a diff of what would change and ask before overwriting.
 If `index.md` already exists: regenerate it (it's always a fresh catalog of current vault state).
-If a monolithic `log.md` already exists with `## YYYY-MM-DD` sections: run `uv run --directory "SKILL_ROOT" scripts/migrate_log.py --vault <vault-path>` (its absolute path was given at session start as **Skill root**; substitute it for `SKILL_ROOT`) to split it into `Logs/YYYY-MM-DD.md` files. Do not overwrite manually.
+If a monolithic `log.md` already exists with `## YYYY-MM-DD` sections: run `uv run --directory "SKILL_ROOT" scripts/migrate_log.py --vault "<vault-path>"` (its absolute path was given at session start as **Skill root**; substitute it for `SKILL_ROOT`) to split it into `Logs/YYYY-MM-DD.md` files. Do not overwrite manually.
 
 ---
 

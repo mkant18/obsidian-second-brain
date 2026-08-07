@@ -17,7 +17,7 @@ This is a hybrid command: a deterministic Python scan produces the facts, then Y
 
 2. **Run the scan** from the skill root (its absolute path was given at session start as **Skill root**; substitute it for `SKILL_ROOT`):
    ```bash
-   uv run --directory "SKILL_ROOT" scripts/architect_scan.py --path <codebase>
+   uv run --directory "SKILL_ROOT" scripts/architect_scan.py --path "<codebase>"
    ```
    It returns JSON: `name`, `kind`, `languages` (with file counts), `modules` (proposed top-level parts with a `core`/`support` hint), `dependencies`, `entry_points`, `signals` (dockerfile/makefile/ci), and `git` (commit). It writes nothing and calls no LLM - the synthesis is yours.
 

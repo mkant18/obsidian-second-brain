@@ -108,7 +108,7 @@ fi
 
 # ── add PostCompact hook ──────────────────────────────────────────────────────
 
-HOOK_CMD="bash $HOOK_SCRIPT"
+HOOK_CMD="bash \"$HOOK_SCRIPT\""
 
 # Check if hook already exists
 EXISTING=$(jq -r '
@@ -140,7 +140,7 @@ fi
 
 # ── add SessionStart hook ────────────────────────────────────────────────────
 
-SESSION_HOOK_CMD="python3 $SESSION_HOOK"
+SESSION_HOOK_CMD="python3 \"$SESSION_HOOK\""
 
 EXISTING_SESSION=$(jq -r '
   .hooks.SessionStart // [] |
